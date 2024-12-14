@@ -31,8 +31,8 @@ using enable_if_t = typename enable_if<B, T>::type;
  */
 template <size_t bits>
 struct uintN_t {
-    using        digit_t = uint_fast32_t;
-    using extend_digit_t = uint_fast64_t;
+    using        digit_t = uint32_t;
+    using extend_digit_t = uint64_t;
     static constexpr size_t digit_width = sizeof(digit_t) * 8;
     static constexpr size_t digit_count = bits / digit_width;
 
