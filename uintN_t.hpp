@@ -23,6 +23,8 @@ struct enable_if<true, T> { using type = T; };
 template <bool B, class T>
 using enable_if_t = typename enable_if<B, T>::type;
 
+#define evsENABLE(cond) ::detail::enable_if_t<(cond), int> = 0
+
 } // namespace detail
 
 /**
@@ -52,8 +54,7 @@ struct uintN_t {
         const noexcept { return digits[0]; }
 
     // Widening conversion (1 -> 01)
-    template <size_t other_bits,
-        detail::enable_if_t<(other_bits > bits), int> = 0>
+    template <size_t other_bits, evsENABLE(other_bits > bits)>
     constexpr operator uintN_t<other_bits>() const noexcept {
         uintN_t<other_bits> out;
         evsIRANGE(i, digit_count)
@@ -62,8 +63,7 @@ struct uintN_t {
     }
 
     // Narrowing conversion (12 -> 2)
-    template <size_t other_bits,
-        detail::enable_if_t<(other_bits < bits), int> = 0>
+    template <size_t other_bits, evsENABLE(other_bits < bits)>
     constexpr explicit operator uintN_t<other_bits>() const noexcept {
         uintN_t<other_bits> out;
         evsIRANGE(i, out.digit_count)
