@@ -23,7 +23,8 @@ struct enable_if<true, T> { using type = T; };
 template <bool B, class T>
 using enable_if_t = typename enable_if<B, T>::type;
 
-#define evsENABLE(cond) ::detail::enable_if_t<(cond), int> = 0
+#define evsENABLE(cond) \
+::detail::enable_if_t<(cond), int> = 0
 
 } // namespace detail
 
@@ -199,9 +200,9 @@ struct uintN_t {
     constexpr uintN_t& operator%=(const uintN_t&) noexcept;
 
     // Binary operators
-#define evsBINOP_VIA_BINASGOP(type, op)                          \
-    constexpr type operator op(const type& rhs) const noexcept { \
-        return type(*this) op ## = rhs; }
+#define evsBINOP_VIA_BINASGOP(type, op)               \
+    constexpr type operator op(const type& rhs) const \
+    noexcept { return type(*this) op ## = rhs; }
 
     evsBINOP_VIA_BINASGOP(uintN_t, +)
     evsBINOP_VIA_BINASGOP(uintN_t, -)
@@ -235,21 +236,23 @@ struct uintN_t {
         return (rhs.digits[i] < digits[i]) - (digits[i] < rhs.digits[i]);
     }
 
-    constexpr bool operator==(const uintN_t& rhs) const noexcept { return compare(rhs) == 0; }
+#define evsCMP_OPER_TMPL(op)                       \
+    constexpr bool operator op(const uintN_t& rhs) \
+    const noexcept { return compare(rhs) op 0; }
+
+    evsCMP_OPER_TMPL(==)
 #ifndef __cpp_impl_three_way_comparison
-    constexpr bool operator!=(const uintN_t& rhs) const noexcept { return compare(rhs) != 0; }
-    constexpr bool operator< (const uintN_t& rhs) const noexcept { return compare(rhs) <  0; }
-    constexpr bool operator> (const uintN_t& rhs) const noexcept { return compare(rhs) >  0; }
-    constexpr bool operator<=(const uintN_t& rhs) const noexcept { return compare(rhs) <= 0; }
-    constexpr bool operator>=(const uintN_t& rhs) const noexcept { return compare(rhs) >= 0; }
+    evsCMP_OPER_TMPL(!=)
+    evsCMP_OPER_TMPL(< )
+    evsCMP_OPER_TMPL(> )
+    evsCMP_OPER_TMPL(<=)
+    evsCMP_OPER_TMPL(>=)
 #else
     constexpr std::strong_ordering operator<=>(const uintN_t& rhs) const noexcept {
-        switch (compare(rhs)) {
-            case -1: return std::strong_ordering::less;
-            case  0: return std::strong_ordering::equal;
-            case  1: return std::strong_ordering::greater;
-            default: return std::strong_ordering::equivalent;
-        }
+        const int cmp = compare(rhs);
+        if (cmp < 0) return std::strong_ordering::less;
+        if (cmp > 0) return std::strong_ordering::greater;
+        return std::strong_ordering::equal;
     }
 #endif
 
