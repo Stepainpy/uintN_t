@@ -44,7 +44,7 @@ struct uintN_t {
 
     digit_t digits[digit_count] {};
 
-    // Conversions
+    /* Conversions */
     constexpr operator bool() const noexcept {
         evsIRANGE(i, digit_count)
             if (digits[i])
@@ -54,7 +54,7 @@ struct uintN_t {
     constexpr explicit operator digit_t()
         const noexcept { return digits[0]; }
 
-    // Widening conversion (1 -> 01)
+    /* Widening conversion (1 -> 01) */
     template <size_t other_bits, evsENABLE(other_bits > bits)>
     constexpr operator uintN_t<other_bits>() const noexcept {
         uintN_t<other_bits> out;
@@ -63,7 +63,7 @@ struct uintN_t {
         return out;
     }
 
-    // Narrowing conversion (12 -> 2)
+    /* Narrowing conversion (12 -> 2) */
     template <size_t other_bits, evsENABLE(other_bits < bits)>
     constexpr explicit operator uintN_t<other_bits>() const noexcept {
         uintN_t<other_bits> out;
@@ -72,7 +72,8 @@ struct uintN_t {
         return out;
     }
 
-    // Assign functions
+    /* Assign functions */
+
     /**
      * @brief  Add `rhs` to number and save result in number
      * @param  rhs second number for addition
@@ -90,12 +91,20 @@ struct uintN_t {
         return carry;
     }
 
+    /**
+     * @brief Shift bits to left by `shift`
+     * @param shift bit shift, must be in range [`1`, `digit_width` - `1`]
+     */
     constexpr void small_shift_left(size_t shift) noexcept {
         if (!shift || shift >= digit_width) return;
         for (size_t i = digit_count - 1; i > 0; i--)
             digits[i] = digits[i] << shift | digits[i - 1] >> (digit_width - shift);
         digits[0] <<= shift;
     }
+    /**
+     * @brief Shift bits to right by `shift`
+     * @param shift bit shift, must be in range [`1`, `digit_width` - `1`]
+     */
     constexpr void small_shift_right(size_t shift) noexcept {
         if (!shift || shift >= digit_width) return;
         evsIRANGE(i, digit_count - 1)
@@ -103,12 +112,22 @@ struct uintN_t {
         digits[digit_count - 1] >>= shift;
     }
 
+    /**
+     * @brief Shift digit to left by `shift`,
+     *        equal shift by `digit_width` * `shift`
+     * @param shift digit shift, must be in range [`1`, `digit_count` - `1`]
+     */
     constexpr void digit_shift_left(size_t shift) noexcept {
         if (shift >= digit_count) return clear();
         for (size_t i = digit_count - 1; i > shift - 1; i--)
             digits[i] = digits[i - shift];
         evsIRANGE(i, shift) digits[i] = 0;
     }
+    /**
+     * @brief Shift digit to right by `shift`,
+     *        equal shift by `digit_width` * `shift`
+     * @param shift digit shift, must be in range [`1`, `digit_count` - `1`]
+     */
     constexpr void digit_shift_right(size_t shift) noexcept {
         if (shift >= digit_count) return clear();
         evsIRANGE(i, digit_count - shift)
@@ -117,7 +136,8 @@ struct uintN_t {
             digits[i] = 0;
     }
 
-    // Unary operators
+    /* Unary operators */
+
     constexpr uintN_t operator+() const noexcept { return *this; }
     constexpr uintN_t operator-() const noexcept { return ~(*this) += {1}; }
     constexpr uintN_t operator~() const noexcept {
@@ -127,7 +147,8 @@ struct uintN_t {
         return out;
     }
 
-    // Increment/Decrement
+    /* Increment/Decrement */
+
     constexpr uintN_t& operator++() noexcept { return *this += {1}; }
     constexpr uintN_t& operator--() noexcept { return *this -= {1}; }
 
@@ -140,7 +161,8 @@ struct uintN_t {
         return out;
     }
 
-    // Binary-assign operators
+    /* Binary-assign operators */
+
     constexpr uintN_t& operator+=(const uintN_t& rhs) noexcept {
         assign_add(rhs);
         return *this;
@@ -184,7 +206,8 @@ struct uintN_t {
     constexpr uintN_t& operator/=(const uintN_t&) noexcept;
     constexpr uintN_t& operator%=(const uintN_t&) noexcept;
 
-    // Binary operators
+    /* Binary operators */
+
 #define evsBINOP_VIA_BINASGOP(op)                           \
     constexpr uintN_t operator op(const uintN_t& rhs) const \
     noexcept { return uintN_t(*this) op ## = rhs; }
@@ -216,7 +239,8 @@ struct uintN_t {
         return uintN_t(*this) >>= shift;
     }
 
-    // Comparison operators
+    /* Comparison operators */
+
     /**
      * @brief  Three-way comparison of a number with `rhs`
      * @param  rhs the number to be compared with
@@ -248,7 +272,9 @@ struct uintN_t {
     }
 #endif
 
-    // Other functions
+    /* Other functions */
+
+    /// Set all digits equal zero, same as `*this = {0}`
     constexpr void clear() noexcept {
         evsIRANGE(i, digit_count) digits[i] = 0;
     }
