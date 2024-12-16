@@ -90,17 +90,31 @@ struct uintN_t {
         return carry;
     }
 
-    /// Shift left the bits in the number by 1
-    constexpr void shift_left() noexcept {
+    constexpr void small_shift_left(size_t shift) noexcept {
+        if (!shift || shift >= digit_width) return;
         for (size_t i = digit_count - 1; i > 0; i--)
-            digits[i] = digits[i] << 1 | digits[i - 1] >> (digit_width - 1);
-        digits[0] <<= 1;
+            digits[i] = digits[i] << shift | digits[i - 1] >> (digit_width - shift);
+        digits[0] <<= shift;
     }
-    /// Shift right the bits in the number by 1
-    constexpr void shift_right() noexcept {
+    constexpr void small_shift_right(size_t shift) noexcept {
+        if (!shift || shift >= digit_width) return;
         evsIRANGE(i, digit_count - 1)
-            digits[i] = digits[i] >> 1 | digits[i + 1] << (digit_width - 1);
-        digits[digit_count - 1] >>= 1;
+            digits[i] = digits[i] >> shift | digits[i + 1] << (digit_width - shift);
+        digits[digit_count - 1] >>= shift;
+    }
+
+    constexpr void digit_shift_left(size_t shift) noexcept {
+        if (shift >= digit_count) return clear();
+        for (size_t i = digit_count - 1; i > shift - 1; i--)
+            digits[i] = digits[i - shift];
+        evsIRANGE(i, shift) digits[i] = 0;
+    }
+    constexpr void digit_shift_right(size_t shift) noexcept {
+        if (shift >= digit_count) return clear();
+        evsIRANGE(i, digit_count - shift)
+            digits[i] = digits[i + shift];
+        for (size_t i = digit_count - 1; i > digit_count - shift - 1; i--)
+            digits[i] = 0;
     }
 
     // Unary operators
@@ -116,6 +130,7 @@ struct uintN_t {
     // Increment/Decrement
     constexpr uintN_t& operator++() noexcept { return *this += {1}; }
     constexpr uintN_t& operator--() noexcept { return *this -= {1}; }
+
     constexpr uintN_t operator++(int) noexcept {
         uintN_t out = *this; ++(*this);
         return out;
@@ -133,66 +148,36 @@ struct uintN_t {
     constexpr uintN_t& operator-=(const uintN_t& rhs) noexcept {
         return *this += -rhs;
     }
-    constexpr uintN_t& operator&=(const uintN_t& rhs) noexcept {
-        evsIRANGE(i, digit_count) digits[i] &= rhs.digits[i];
+
+#define evsBITWISE_ASGOPER_TMPL(op)                               \
+    constexpr uintN_t& operator op(const uintN_t& rhs) noexcept { \
+        evsIRANGE(i, digit_count) digits[i] op rhs.digits[i];     \
+        return *this; }
+    
+    evsBITWISE_ASGOPER_TMPL(&=)
+    evsBITWISE_ASGOPER_TMPL(|=)
+    evsBITWISE_ASGOPER_TMPL(^=)
+
+    constexpr uintN_t& operator<<=(size_t shift) noexcept {
+        digit_shift_left(shift / digit_width);
+        small_shift_left(shift % digit_width);
         return *this;
     }
-    constexpr uintN_t& operator|=(const uintN_t& rhs) noexcept {
-        evsIRANGE(i, digit_count) digits[i] |= rhs.digits[i];
+    constexpr uintN_t& operator>>=(size_t shift) noexcept {
+        digit_shift_right(shift / digit_width);
+        small_shift_right(shift % digit_width);
         return *this;
     }
-    constexpr uintN_t& operator^=(const uintN_t& rhs) noexcept {
-        evsIRANGE(i, digit_count) digits[i] ^= rhs.digits[i];
-        return *this;
-    }
+
     constexpr uintN_t& operator<<=(int shift) noexcept {
         if (shift < 0) return *this >>= -shift;
-
-        const size_t complete_digit_shift = shift / digit_width;
-        const size_t  partial_digit_shift = shift % digit_width;
-
-        for (size_t i = digit_count - 1; i && i >= complete_digit_shift; i--)
-            digits[i] = digits[i - complete_digit_shift];
-        const size_t min_count =
-            complete_digit_shift < digit_count
-                ? complete_digit_shift
-                : digit_count;
-        evsIRANGE(i, min_count) digits[i] = 0;
-
-        if (partial_digit_shift) {
-            for (size_t i = digit_count - 1; i > 0; i--)
-                digits[i] = digits[i] << partial_digit_shift |
-                    digits[i - 1] >> (digit_width - partial_digit_shift);
-            digits[0] <<= partial_digit_shift;
-        }
-
-        return *this;
+        return *this <<= static_cast<size_t>(shift);
     }
     constexpr uintN_t& operator>>=(int shift) noexcept {
         if (shift < 0) return *this <<= -shift;
-
-        const size_t complete_digit_shift = shift / digit_width;
-        const size_t  partial_digit_shift = shift % digit_width;
-
-        if (complete_digit_shift > digit_count) {
-            evsIRANGE(i, digit_count) digits[i] = 0;
-            return *this;
-        }
-
-        evsIRANGE(i, digit_count - complete_digit_shift)
-            digits[i] = digits[i + complete_digit_shift];
-        for (size_t i = digit_count - complete_digit_shift; i < digit_count; i++)
-            digits[i] = 0;
-        
-        if (partial_digit_shift) {
-            evsIRANGE(i, digit_count - 1)
-                digits[i] = digits[i] >> partial_digit_shift |
-                    digits[i + 1] << (digit_width - partial_digit_shift);
-            digits[digit_count - 1] >>= partial_digit_shift;
-        }
-
-        return *this;
+        return *this >>= static_cast<size_t>(shift);
     }
+
     constexpr uintN_t& operator*=(const uintN_t&) noexcept;
     constexpr uintN_t& operator*=(uint16_t) noexcept;
 
@@ -200,21 +185,28 @@ struct uintN_t {
     constexpr uintN_t& operator%=(const uintN_t&) noexcept;
 
     // Binary operators
-#define evsBINOP_VIA_BINASGOP(type, op)               \
-    constexpr type operator op(const type& rhs) const \
-    noexcept { return type(*this) op ## = rhs; }
+#define evsBINOP_VIA_BINASGOP(op)                           \
+    constexpr uintN_t operator op(const uintN_t& rhs) const \
+    noexcept { return uintN_t(*this) op ## = rhs; }
 
-    evsBINOP_VIA_BINASGOP(uintN_t, +)
-    evsBINOP_VIA_BINASGOP(uintN_t, -)
-    evsBINOP_VIA_BINASGOP(uintN_t, *)
-    evsBINOP_VIA_BINASGOP(uintN_t, /)
-    evsBINOP_VIA_BINASGOP(uintN_t, %)
-    evsBINOP_VIA_BINASGOP(uintN_t, &)
-    evsBINOP_VIA_BINASGOP(uintN_t, |)
-    evsBINOP_VIA_BINASGOP(uintN_t, ^)
+    evsBINOP_VIA_BINASGOP(+)
+    evsBINOP_VIA_BINASGOP(-)
+    evsBINOP_VIA_BINASGOP(*)
+    evsBINOP_VIA_BINASGOP(/)
+    evsBINOP_VIA_BINASGOP(%)
+    evsBINOP_VIA_BINASGOP(&)
+    evsBINOP_VIA_BINASGOP(|)
+    evsBINOP_VIA_BINASGOP(^)
 
     constexpr uintN_t operator*(uint16_t rhs) const noexcept {
         return uintN_t(*this) *= rhs;
+    }
+
+    constexpr uintN_t operator<<(size_t shift) const noexcept {
+        return uintN_t(*this) <<= shift;
+    }
+    constexpr uintN_t operator>>(size_t shift) const noexcept {
+        return uintN_t(*this) >>= shift;
     }
 
     constexpr uintN_t operator<<(int shift) const noexcept {
@@ -257,6 +249,10 @@ struct uintN_t {
 #endif
 
     // Other functions
+    constexpr void clear() noexcept {
+        evsIRANGE(i, digit_count) digits[i] = 0;
+    }
+
     /**
      * @brief  Get bit value from `pos`
      * @param  pos index of bit
