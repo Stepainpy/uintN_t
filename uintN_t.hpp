@@ -240,7 +240,7 @@ struct uintN_t {
     evsCMP_OPER_TMPL(<=)
     evsCMP_OPER_TMPL(>=)
 #else
-    constexpr std::strong_ordering operator<=>(const uintN_t& rhs) const noexcept {
+    constexpr auto operator<=>(const uintN_t& rhs) const noexcept {
         const int cmp = compare(rhs);
         if (cmp < 0) return std::strong_ordering::less;
         if (cmp > 0) return std::strong_ordering::greater;
@@ -314,7 +314,8 @@ struct uintN_t {
     }
 
     /**
-     * @brief  Change order of elements (digits) in inner array (need for to_string algorithm)
+     * @brief  Change order of elements (digits) in inner
+     *         array (need for to_string algorithm)
      * @return new number with reverse digit order
      */
     constexpr uintN_t reverse_digits() const noexcept {
@@ -373,17 +374,14 @@ constexpr uintN_t<B*2> karatsuba(
     //              ^- return with width = B
 
     // if-blocks need because has overflow in x2 and y2
-    if (xc) z3 += static_cast<doub_num_t>(y2) << static_cast<int>(B/2);
-    if (yc) z3 += static_cast<doub_num_t>(x2) << static_cast<int>(B/2);
-    if (xc && yc) z3 += doub_num_t{1} << static_cast<int>(B);
+    if (xc) z3 += static_cast<doub_num_t>(y2) << B/2;
+    if (yc) z3 += static_cast<doub_num_t>(x2) << B/2;
+    if (xc && yc) z3 += doub_num_t{1} << B;
     doub_num_t z1 = z3 - z2 - z0;
     
-    z1 <<= static_cast<int>(B/2);
-    z2 <<= static_cast<int>(B);
-
     doub_num_t out = z0;
-    out += z1;
-    out += z2;
+    z1 <<= B/2; z2 <<= B;
+    (out += z1) += z2;
 
     return out;
 }
@@ -413,8 +411,8 @@ constexpr uintN_t<B*2> russian_peasant(
     while (right) {
         if (right.digits[0] & 1)
             out += left;
-        left.shift_left();
-        right.shift_right();
+        left.small_shift_left(1);
+        right.small_shift_right(1);
     }
     return out;
 }
@@ -440,7 +438,7 @@ constexpr div_result_t<B> prime(
 
     uintN_t<B> Q, R;
     for (size_t i = B; i--;) {
-        R.shift_left();
+        R.small_shift_left(1);
         R.bit(0, N.bit(i));
         if (R >= D) {
             R -= D;
