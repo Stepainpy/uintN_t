@@ -514,6 +514,8 @@ static constexpr auto max_1024_value =
     "5408272371633505106845862982399472459384"
     "79716304835356329624224137215";
 
+static constexpr auto log10_2 = 0.3010299956639812L;
+
 } // namespace detail
 
 // Define uintN_t multiplication operators
@@ -562,8 +564,29 @@ evsDEFINE_LITERAL_SUFFUX(1024)
 #include <ostream>
 #include <utility>
 #include <string>
+#include <limits>
 
 namespace std {
+
+template <size_t B>
+struct numeric_limits<uintN_t<B>>
+    : numeric_limits<typename uintN_t<B>::digit_t> {
+    static constexpr int digits = B;
+    static constexpr int digits10 =
+        static_cast<int>(digits * detail::log10_2);
+    /* Other variables same for unsigned int */
+    
+    static constexpr uintN_t<B> min() noexcept { return {}; }
+    static constexpr uintN_t<B> max() noexcept { return ~min(); }
+
+    static constexpr uintN_t<B> lowest()        noexcept { return {}; }
+    static constexpr uintN_t<B> epsilon()       noexcept { return {}; }
+    static constexpr uintN_t<B> infinity()      noexcept { return {}; }
+    static constexpr uintN_t<B> quiet_NaN()     noexcept { return {}; }
+    static constexpr uintN_t<B> denorm_min()    noexcept { return {}; }
+    static constexpr uintN_t<B> round_error()   noexcept { return {}; }
+    static constexpr uintN_t<B> signaling_NaN() noexcept { return {}; }
+};
 
 template <size_t bits>
 string to_string(const uintN_t<bits>& number, bool is_signed = false) {
