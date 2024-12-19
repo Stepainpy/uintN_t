@@ -180,6 +180,8 @@ struct uintN_t {
     evsBITWISE_ASGOPER_TMPL(|=)
     evsBITWISE_ASGOPER_TMPL(^=)
 
+#undef evsBITWISE_ASGOPER_TMPL
+
     constexpr uintN_t& operator<<=(size_t shift) noexcept {
         digit_shift_left(shift / digit_width);
         small_shift_left(shift % digit_width);
@@ -220,6 +222,8 @@ struct uintN_t {
     evsBINOP_VIA_BINASGOP(&)
     evsBINOP_VIA_BINASGOP(|)
     evsBINOP_VIA_BINASGOP(^)
+
+#undef evsBINOP_VIA_BINASGOP
 
     constexpr uintN_t operator*(uint16_t rhs) const noexcept {
         return uintN_t(*this) *= rhs;
@@ -271,6 +275,8 @@ struct uintN_t {
         return std::strong_ordering::equal;
     }
 #endif
+
+#undef evsCMP_OPER_TMPL
 
     /* Other functions */
 
@@ -582,6 +588,8 @@ evsDEFINE_LITERAL_SUFFUX(128)
 evsDEFINE_LITERAL_SUFFUX(256)
 evsDEFINE_LITERAL_SUFFUX(512)
 evsDEFINE_LITERAL_SUFFUX(1024)
+
+#undef evsDEFINE_LITERAL_SUFFUX
 
 } // namespace uintN_t_literals
 
