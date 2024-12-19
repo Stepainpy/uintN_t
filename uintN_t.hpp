@@ -593,6 +593,13 @@ evsDEFINE_LITERAL_SUFFUX(1024)
 
 } // namespace uintN_t_literals
 
+namespace uintN_t_alg {
+
+using ::detail::multiplication::karatsuba;
+using ::detail::multiplication::russian_peasant;
+
+} // namespace uintN_t_alg
+
 #include <ostream>
 #include <utility>
 #include <string>
