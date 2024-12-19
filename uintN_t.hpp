@@ -443,14 +443,32 @@ constexpr uintN_t<B*2> russian_peasant(
     return out;
 }
 
+template <size_t B>
+constexpr uintN_t<B> by_10(const uintN_t<B>& lhs) noexcept {
+    return (lhs << 3) + (lhs << 1);
+}
+
 } // namespace multiplication
 
 namespace division {
 
-template <size_t bits>
+template <size_t B>
+constexpr uintN_t<B> create_invert_10() noexcept {
+    uintN_t<B> out;
+    evsIRANGE(i, out.digit_count)
+        out.digits[i] = 0xcccccccc;
+    ++out.digits[0];
+    return out;
+}
+
+template <size_t B>
+static constexpr uintN_t<B>
+    invert_10 = create_invert_10<B>();
+
+template <size_t B>
 struct div_result_t {
-    uintN_t<bits> quotient;
-    uintN_t<bits> remainder;
+    uintN_t<B> quotient;
+    uintN_t<B> remainder;
 };
 
 // https://clck.ru/3FBwXQ (Wikipedia)
@@ -473,6 +491,12 @@ constexpr div_result_t<B> prime(
     }
 
     return {Q, R};
+}
+
+template <size_t B>
+constexpr uintN_t<B> by_10(const uintN_t<B>& lhs) noexcept {
+    auto res = multiplication::karatsuba(lhs, invert_10<B>);
+    return static_cast<uintN_t<B>>(res >> (B + 3));
 }
 
 } // namespace division
@@ -588,55 +612,34 @@ struct numeric_limits<uintN_t<B>>
     static constexpr uintN_t<B> signaling_NaN() noexcept { return {}; }
 };
 
-template <size_t bits>
-string to_string(const uintN_t<bits>& number, bool is_signed = false) {
-    string out;
-    uintN_t<bits> n;
-    uint64_t d, r;
+template <size_t B>
+string to_string(const uintN_t<B>& number) {
+    char buffer[std::numeric_limits<uintN_t<B>>::digits10 + 1] {};
 
-    bool sign = number.digits[number.digit_count - 1] >> 31;
-    if (is_signed && sign)
-        n = (-number).reverse_digits();
-    else n = number.reverse_digits();
+    uintN_t<B> i = number;
+    char* num_end = buffer;
+    do {
+        auto q = detail::division::by_10(i);
+        auto r = i - detail::multiplication::by_10(q);
+        *num_end++ = '0' + r.digits[0];
+        i = q;
+    } while (i);
 
-    do { // https://stackoverflow.com/a/8023937
-        r = n.digits[0];
-
-        evsIRANGE(i, n.digit_count - 1) {
-            d = r / 10;
-            r = ((r - d * 10) << 32) + n.digits[i + 1];
-            n.digits[i] = d;
-        }
-
-        d = r / 10;
-        r = r - d * 10;
-        n.digits[n.digit_count - 1] = d;
-
-        out.insert(out.begin(), r + '0');
-    } while (n);
-
-    if (is_signed && sign) out.insert(out.begin(), '-');
+    string out(num_end - buffer, '\0');
+    for (auto begin = out.begin(); buffer != num_end; ++begin)
+        *begin = *--num_end;
     return out;
 }
 
-template <size_t bits>
-ostream& operator<<(ostream& os, const uintN_t<bits>& n) {
-    if (os.flags() & os.hex) {
-        char prev = os.fill('0');
-        os << n.digits[n.digit_count - 1];
-        for (size_t i = n.digit_count - 1; i > 0; i--) {
-            os.width(8);
-            os << n.digits[i - 1];
-        }
-        os.fill(prev);
-    } else os << to_string(n, false);
-    return os;
+template <size_t B>
+ostream& operator<<(ostream& os, const uintN_t<B>& n) {
+    return os << to_string(n);
 }
 
-template <size_t bits>
+template <size_t B>
 constexpr void swap(
-    uintN_t<bits>& lhs,
-    uintN_t<bits>& rhs
+    uintN_t<B>& lhs,
+    uintN_t<B>& rhs
 ) noexcept {
     swap(lhs.digits, rhs.digits);
 }
