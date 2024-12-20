@@ -280,6 +280,20 @@ struct uintN_t {
 
     /* Other functions */
 
+    /**
+     * @brief  Get sign of number
+     * @return Int value as `-1` (negative),
+     *         `1` (positive) and `0` (equal zero)
+     */
+    constexpr int sign() const noexcept {
+        const bool sign_bit =
+            (digits[digit_count - 1] >> (digit_width - 1)) & 1;
+        if (sign_bit) return -1;
+        evsIRANGE(i, digit_count)
+            if (digits[i]) return 1;
+        return 0;
+    }
+
     /// Set all digits equal zero, same as `*this = {0}`
     constexpr void clear() noexcept {
         evsIRANGE(i, digit_count) digits[i] = 0;
