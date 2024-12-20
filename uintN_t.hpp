@@ -26,6 +26,15 @@ using enable_if_t = typename enable_if<B, T>::type;
 #define evsENABLE(cond) \
 ::detail::enable_if_t<(cond), int> = 0
 
+constexpr uint64_t merge_32_to_64(uint32_t low, uint32_t high) noexcept {
+    return static_cast<uint64_t>(high) << 32 | low;
+}
+
+constexpr void split_64_to_32(uint64_t num, uint32_t& low, uint32_t& high) noexcept {
+    low  = static_cast<uint32_t>(num);
+    high = static_cast<uint32_t>(num >> 32);
+}
+
 } // namespace detail
 
 /**
