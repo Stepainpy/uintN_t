@@ -358,23 +358,6 @@ struct uintN_t {
         evsIRANGE(i, high.digit_count)
             digits[base++] = high.digits[i];
     }
-
-    /**
-     * @brief  Change order of elements (digits) in inner
-     *         array (need for to_string algorithm)
-     * @return new number with reverse digit order
-     */
-    constexpr uintN_t reverse_digits() const noexcept {
-        uintN_t out = *this;
-        digit_t* i = out.digits;
-        digit_t* j = out.digits + out.digit_count;
-        for (--j; i < j; ++i, --j) {
-            digit_t tmp = *i;
-            *i = *j;
-            *j = tmp;
-        }
-        return out;
-    }
 }; // struct uintN_t
 
 // Base size aliases
