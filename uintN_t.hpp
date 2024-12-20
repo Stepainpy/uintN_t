@@ -420,14 +420,12 @@ constexpr uintN_t<64> karatsuba(
     const uintN_t<32>& lhs,
     const uintN_t<32>& rhs
 ) noexcept {
-    using  nt = uintN_t<32>;
-    using  dt = nt::digit_t;
-    using edt = nt::extend_digit_t;
-    edt res = 
-        static_cast<edt>(lhs.digits[0]) *
-        static_cast<edt>(rhs.digits[0]);
+    uintN_t<32>::extend_digit_t res = 
+        static_cast<uintN_t<32>::extend_digit_t>(lhs.digits[0]) *
+        static_cast<uintN_t<32>::extend_digit_t>(rhs.digits[0]);
     return {
-        static_cast<dt>(res), static_cast<dt>(res >> nt::digit_width)
+        static_cast<uintN_t<32>::digit_t>(res),
+        static_cast<uintN_t<32>::digit_t>(res >> uintN_t<32>::digit_width)
     };
 }
 
