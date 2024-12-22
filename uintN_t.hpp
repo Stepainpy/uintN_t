@@ -53,11 +53,6 @@ struct uintN_t {
 
     digit_t digits[digit_count] {};
 
-    /* Constant values */
-    static constexpr uintN_t zero = {0};
-    static constexpr uintN_t one  = {1};
-    static constexpr uintN_t maximum = ~zero;
-
     /* Conversions */
     constexpr operator bool() const noexcept {
         evsIRANGE(i, digit_count)
@@ -153,7 +148,7 @@ struct uintN_t {
     /* Unary operators */
 
     constexpr uintN_t operator+() const noexcept { return *this; }
-    constexpr uintN_t operator-() const noexcept { return ~(*this) += one; }
+    constexpr uintN_t operator-() const noexcept { return ~(*this) += {1}; }
     constexpr uintN_t operator~() const noexcept {
         uintN_t out = *this;
         evsIRANGE(i, digit_count)
@@ -163,8 +158,8 @@ struct uintN_t {
 
     /* Increment/Decrement */
 
-    constexpr uintN_t& operator++() noexcept { return *this += one; }
-    constexpr uintN_t& operator--() noexcept { return *this -= one; }
+    constexpr uintN_t& operator++() noexcept { return *this += {1}; }
+    constexpr uintN_t& operator--() noexcept { return *this -= {1}; }
 
     constexpr uintN_t operator++(int) noexcept {
         uintN_t out = *this; ++(*this);
