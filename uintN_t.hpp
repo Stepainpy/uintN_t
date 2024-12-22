@@ -458,27 +458,9 @@ constexpr uintN_t<B*2> russian_peasant(
     return out;
 }
 
-template <size_t B>
-constexpr uintN_t<B> by_10(const uintN_t<B>& lhs) noexcept {
-    return (lhs << 3) + (lhs << 1);
-}
-
 } // namespace multiplication
 
 namespace division {
-
-template <size_t B>
-constexpr uintN_t<B> create_invert_10() noexcept {
-    uintN_t<B> out;
-    evsIRANGE(i, out.digit_count)
-        out.digits[i] = 0xcccccccc;
-    ++out.digits[0];
-    return out;
-}
-
-template <size_t B>
-static constexpr uintN_t<B>
-    invert_10 = create_invert_10<B>();
 
 template <size_t B>
 struct div_result_t {
@@ -506,12 +488,6 @@ constexpr div_result_t<B> prime(
     }
 
     return {Q, R};
-}
-
-template <size_t B>
-constexpr uintN_t<B> by_10(const uintN_t<B>& lhs) noexcept {
-    auto res = multiplication::karatsuba(lhs, invert_10<B>);
-    return static_cast<uintN_t<B>>(res >> (B + 3));
 }
 
 } // namespace division
@@ -609,10 +585,93 @@ using ::detail::multiplication::russian_peasant;
 
 } // namespace uintN_t_alg
 
+#include <algorithm>
 #include <ostream>
 #include <utility>
 #include <string>
 #include <limits>
+
+namespace detail {
+
+static constexpr char digit_set[] = {
+    '0', '1', '2', '3', '4', '5', '6', '7', '8',
+    '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+    'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',
+    'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+};
+
+template <class T>
+constexpr void reverse(T* first, T* last) noexcept {
+    if (first == last) return;
+    for (--last; first < last; ++first, --last) {
+        T tmp = *last;
+        *last = *first;
+        *first = tmp;
+    }
+}
+
+template <size_t B>
+constexpr char* to_chars_i(
+    char* first, char* last,
+    uintN_t<B> number,
+    bool* overflow, int base
+) noexcept {
+    reverse(number.digits, number.digits + number.digit_count);
+    uint64_t d, r;
+    char* it = first;
+
+    do { // algorithm from https://stackoverflow.com/a/8023937
+        if (it == last) {
+            if (overflow)
+                *overflow = true;
+            return last;
+        }
+
+        r = number.digits[0];
+        evsIRANGE(i, number.digit_count) {
+            d = r / base;
+            r = r - d * base;
+            if (i != number.digit_count - 1)
+                r = (r << 32) + number.digits[i + 1];
+            number.digits[i] = d;
+        }
+
+        *it++ = digit_set[r];
+    } while (number);
+
+    reverse(first, it);
+    if (overflow)
+        *overflow = false;
+    return it;
+}
+
+template <size_t B>
+constexpr char* to_chars_pow2(
+    char* first, char* last,
+    uintN_t<B> number,
+    bool* overflow, int pow
+) noexcept {
+    const typename uintN_t<B>::digit_t mask = (1 << pow) - 1;
+    char* it = first;
+
+    do {
+        if (it == last) {
+            if (overflow)
+                *overflow = true;
+            return last;
+        }
+
+        *it++ = digit_set[number.digits[0] & mask];
+        number.small_shift_right(pow);
+    } while (number);
+
+    reverse(first, it);
+    if (overflow)
+        *overflow = false;
+    return it;
+}
+
+} // namespace detail
 
 namespace std {
 
@@ -639,25 +698,66 @@ struct numeric_limits<uintN_t<B>>
 template <size_t B>
 string to_string(const uintN_t<B>& number) {
     char buffer[std::numeric_limits<uintN_t<B>>::digits10 + 1] {};
-
-    uintN_t<B> i = number;
-    char* num_end = buffer;
-    do {
-        auto q = detail::division::by_10(i);
-        auto r = i - detail::multiplication::by_10(q);
-        *num_end++ = '0' + r.digits[0];
-        i = q;
-    } while (i);
-
-    string out(num_end - buffer, '\0');
-    for (auto begin = out.begin(); buffer != num_end; ++begin)
-        *begin = *--num_end;
-    return out;
+    const char* buf_end = detail::to_chars_i(
+        buffer, buffer + sizeof(buffer), number, nullptr, 10);
+    return string(buffer, buf_end - buffer);
 }
 
-template <size_t B>
-ostream& operator<<(ostream& os, const uintN_t<B>& n) {
-    return os << to_string(n);
+template <size_t B, class CharT, class Traits>
+basic_ostream<CharT, Traits>& operator<<(
+    basic_ostream<CharT, Traits>& os, const uintN_t<B>& n) {
+    const auto fls = os.flags();
+    char buffer[B / 3 + 1 + 2 + 1] {};
+    // addition digit --'   |   |
+    // base (0x/0) ---------'   |
+    // pos (+) -----------------'
+
+    size_t offset = 0;
+    char* buf_end;
+
+    if (fls & os.showpos)
+        buffer[offset++] = '+';
+    if (fls & os.showbase) {
+        if (fls & (os.hex | os.oct))
+            buffer[offset++] = '0';
+        if (fls & os.hex)
+            buffer[offset++] = 'x';
+    }
+
+    if (fls & os.hex)
+        buf_end = detail::to_chars_pow2(
+            buffer + offset, buffer + sizeof(buffer), n, nullptr, 4);
+    else if (fls & os.oct)
+        buf_end = detail::to_chars_pow2(
+            buffer + offset, buffer + sizeof(buffer), n, nullptr, 3);
+    else // os.dec branch
+        buf_end = detail::to_chars_i(
+            buffer + offset, buffer + sizeof(buffer), n, nullptr, 10);
+
+    const ptrdiff_t nl = buf_end - buffer;
+    const streamsize w = os.width(0);
+    const ptrdiff_t lw = w > nl ? w - nl : 0;
+    const CharT fillch = os.fill();
+
+    CharT out_number[sizeof(buffer)] {};
+    std::transform(buffer, buf_end, out_number, [&os, &fls] (char c) {
+        if (fls & os.uppercase && (('a' <= c && c <= 'f') || c == 'x'))
+            return os.widen(c - 32);
+        return os.widen(c);
+    });
+
+    if (!(fls & os.internal)) {
+        if ((fls & os.right) || (fls & os.adjustfield) == 0)
+            for (ptrdiff_t i = 0; i < lw; i++) os << fillch;
+        os.write(out_number, nl);
+        if (fls & os.left)
+            for (ptrdiff_t i = 0; i < lw; i++) os << fillch;
+    } else { // os.internal
+        if (offset) os.write(out_number, offset);
+        for (ptrdiff_t i = 0; i < lw; i++) os << fillch;
+        os.write(out_number + offset, nl - offset);
+    }
+    return os;
 }
 
 template <size_t B>
