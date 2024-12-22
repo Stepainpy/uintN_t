@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#ifdef __cpp_impl_three_way_comparison
+#if __cpp_impl_three_way_comparison >= 201907L
 #include <compare>
 #endif
 
@@ -275,7 +275,7 @@ struct uintN_t {
     const noexcept { return compare(rhs) op 0; }
 
     evsCMP_OPER_TMPL(==)
-#ifndef __cpp_impl_three_way_comparison
+#if !(__cpp_impl_three_way_comparison >= 201907L)
     evsCMP_OPER_TMPL(!=)
     evsCMP_OPER_TMPL(< )
     evsCMP_OPER_TMPL(> )
@@ -586,10 +586,15 @@ using ::detail::multiplication::russian_peasant;
 } // namespace uintN_t_alg
 
 #include <algorithm>
+#include <version>
 #include <ostream>
 #include <utility>
 #include <string>
 #include <limits>
+
+#if __cpp_lib_to_chars >= 201611L
+#include <charconv>
+#endif
 
 namespace detail {
 
@@ -702,6 +707,33 @@ string to_string(const uintN_t<B>& number) {
         buffer, buffer + sizeof(buffer), number, nullptr, 10);
     return string(buffer, buf_end - buffer);
 }
+
+#if __cpp_lib_to_chars >= 201611L
+template <size_t B>
+#if __cpp_lib_constexpr_charconv >= 202207L
+constexpr
+#endif
+std::to_chars_result to_chars(
+    char* first, char* last, const uintN_t<B>& value, int base = 10) noexcept {
+    if (base < 2 || base > 36)
+        return {last, std::errc::invalid_argument};
+
+    bool overflow = false;
+    char* end;
+    switch (base) {
+        case  2: end = detail::to_chars_pow2(first, last, value, &overflow, 1); break;
+        case  4: end = detail::to_chars_pow2(first, last, value, &overflow, 2); break;
+        case  8: end = detail::to_chars_pow2(first, last, value, &overflow, 3); break;
+        case 16: end = detail::to_chars_pow2(first, last, value, &overflow, 4); break;
+        case 32: end = detail::to_chars_pow2(first, last, value, &overflow, 5); break;
+        default: end = detail::to_chars_i(first, last, value, &overflow, base); break;
+    }
+
+    if (overflow)
+        return {last, std::errc::value_too_large};
+    return {end, std::errc{}};
+}
+#endif // __cpp_lib_to_chars >= 201611L
 
 template <size_t B, class CharT, class Traits>
 basic_ostream<CharT, Traits>& operator<<(
