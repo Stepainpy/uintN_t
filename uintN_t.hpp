@@ -54,14 +54,20 @@ struct uintN_t {
     digit_t digits[digit_count] {};
 
     /* Conversions */
+
     constexpr operator bool() const noexcept {
         evsIRANGE(i, digit_count)
             if (digits[i])
                 return true;
         return false;
     }
-    constexpr explicit operator digit_t()
-        const noexcept { return digits[0]; }
+
+    constexpr explicit operator digit_t() const noexcept {
+        return digits[0];
+    }
+    constexpr explicit operator extend_digit_t() const noexcept {
+        return detail::merge_32_to_64(digits[0], digits[1]);
+    }
 
     /* Widening conversion (1 -> 01) */
     template <size_t other_bits, evsENABLE(other_bits > bits)>
@@ -368,6 +374,10 @@ struct uintN_t {
             digits[base++] = high.digits[i];
     }
 }; // struct uintN_t
+
+template <>
+constexpr uintN_t<32>::operator uintN_t<32>::extend_digit_t()
+const noexcept { return digits[0]; }
 
 // Base size aliases
 using uint128_t  = uintN_t<128>;
