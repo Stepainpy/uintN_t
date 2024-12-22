@@ -701,10 +701,10 @@ struct numeric_limits<uintN_t<B>>
 };
 
 template <size_t B>
-string to_string(const uintN_t<B>& number) {
+string to_string(const uintN_t<B>& value) {
     char buffer[std::numeric_limits<uintN_t<B>>::digits10 + 1] {};
     const char* buf_end = detail::to_chars_i(
-        buffer, buffer + sizeof(buffer), number, nullptr, 10);
+        buffer, buffer + sizeof(buffer), value, nullptr, 10);
     return string(buffer, buf_end - buffer);
 }
 
@@ -713,10 +713,10 @@ template <size_t B>
 #if __cpp_lib_constexpr_charconv >= 202207L
 constexpr
 #endif
-std::to_chars_result to_chars(
+to_chars_result to_chars(
     char* first, char* last, const uintN_t<B>& value, int base = 10) noexcept {
     if (base < 2 || base > 36)
-        return {last, std::errc::invalid_argument};
+        return {last, errc::invalid_argument};
 
     bool overflow = false;
     char* end;
@@ -730,8 +730,8 @@ std::to_chars_result to_chars(
     }
 
     if (overflow)
-        return {last, std::errc::value_too_large};
-    return {end, std::errc{}};
+        return {last, errc::value_too_large};
+    return {end, errc{}};
 }
 #endif // __cpp_lib_to_chars >= 201611L
 
@@ -772,7 +772,7 @@ basic_ostream<CharT, Traits>& operator<<(
     const CharT fillch = os.fill();
 
     CharT out_number[sizeof(buffer)] {};
-    std::transform(buffer, buf_end, out_number, [&os, &fls] (char c) {
+    transform(buffer, buf_end, out_number, [&os, &fls] (char c) {
         if (fls & os.uppercase && (('a' <= c && c <= 'f') || c == 'x'))
             return os.widen(c - 32);
         return os.widen(c);
