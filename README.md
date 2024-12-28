@@ -43,6 +43,6 @@ int main() {
 
 ## TODO
 
-- [ ] Add support for C++11
+- [x] Add support for C++11
 - [x] Add literal check in operator
 - [ ] Full implement Toom-Cook algorithm with k = 4
