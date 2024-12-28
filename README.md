@@ -9,10 +9,11 @@ Just Include the file `uintN_t.hpp`.
 Create a variable with type uintN_t<*bits*> where *bits* - integer width (32, 64, 128, ...).
 
 Ways create of object:
-- initialize with `{0, 0, ...}` i.e. array of digits
 - using literal suffix `_Ui` + *bits* from namespace `uintN_t_literals`
+- initialize with `{0, 0, ...}` i.e. array of digits (C++14 and later)
 
-Example
+## Example
+
 ``` cpp
 #include "uintN_t.hpp"
 #include <iostream>
@@ -39,7 +40,7 @@ int main() {
 - to `extend_digit_t` (explicit)
 - to `uintN_t` with less width
 - to `uintN_t` with greater width (explicit)
-- to `std::string` from `std::to_string` or ostream
+- to `std::string` from `std::to_string` or `std::to_chars` or ostream
 
 ## TODO
 
