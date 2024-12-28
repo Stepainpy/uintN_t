@@ -170,7 +170,11 @@ struct uintN_t {
     /* Unary operators */
 
     constexpr uintN_t operator+() const noexcept { return *this; }
-    constexpr uintN_t operator-() const noexcept { return ~(*this) += {1}; }
+    constexpr uintN_t operator-() const noexcept {
+        uintN_t out = ~(*this);
+        out.assign_add(1);
+        return out;
+    }
     constexpr uintN_t operator~() const noexcept {
         uintN_t out = *this;
         evsIRANGE(i, digit_count)
@@ -180,7 +184,7 @@ struct uintN_t {
 
     /* Increment/Decrement */
 
-    constexpr uintN_t& operator++() noexcept { return *this += {1}; }
+    constexpr uintN_t& operator++() noexcept { return *this +=  1 ; }
     constexpr uintN_t& operator--() noexcept { return *this -= {1}; }
 
     constexpr uintN_t operator++(int) noexcept {
@@ -195,6 +199,10 @@ struct uintN_t {
     /* Binary-assign operators */
 
     constexpr uintN_t& operator+=(const uintN_t& rhs) noexcept {
+        assign_add(rhs);
+        return *this;
+    }
+    constexpr uintN_t& operator+=(digit_t rhs) noexcept {
         assign_add(rhs);
         return *this;
     }
@@ -241,38 +249,30 @@ struct uintN_t {
 
     /* Binary operators */
 
-#define evsBINOP_VIA_BINASGOP(op)                           \
-    constexpr uintN_t operator op(const uintN_t& rhs) const \
+#define evsBINOP_VIA_BINASGOP(op, param_type)           \
+    constexpr uintN_t operator op(param_type rhs) const \
     noexcept { return uintN_t(*this) op ## = rhs; }
 
-    evsBINOP_VIA_BINASGOP(+)
-    evsBINOP_VIA_BINASGOP(-)
-    evsBINOP_VIA_BINASGOP(*)
-    evsBINOP_VIA_BINASGOP(/)
-    evsBINOP_VIA_BINASGOP(%)
-    evsBINOP_VIA_BINASGOP(&)
-    evsBINOP_VIA_BINASGOP(|)
-    evsBINOP_VIA_BINASGOP(^)
+    evsBINOP_VIA_BINASGOP(+, const uintN_t&)
+    evsBINOP_VIA_BINASGOP(+, digit_t)
+    evsBINOP_VIA_BINASGOP(-, const uintN_t&)
+
+    evsBINOP_VIA_BINASGOP(*, const uintN_t&)
+    evsBINOP_VIA_BINASGOP(*, uint16_t)
+
+    evsBINOP_VIA_BINASGOP(/, const uintN_t&)
+    evsBINOP_VIA_BINASGOP(%, const uintN_t&)
+
+    evsBINOP_VIA_BINASGOP(&, const uintN_t&)
+    evsBINOP_VIA_BINASGOP(|, const uintN_t&)
+    evsBINOP_VIA_BINASGOP(^, const uintN_t&)
+
+    evsBINOP_VIA_BINASGOP(<<, size_t)
+    evsBINOP_VIA_BINASGOP(>>, size_t)
+    evsBINOP_VIA_BINASGOP(<<, int)
+    evsBINOP_VIA_BINASGOP(>>, int)
 
 #undef evsBINOP_VIA_BINASGOP
-
-    constexpr uintN_t operator*(uint16_t rhs) const noexcept {
-        return uintN_t(*this) *= rhs;
-    }
-
-    constexpr uintN_t operator<<(size_t shift) const noexcept {
-        return uintN_t(*this) <<= shift;
-    }
-    constexpr uintN_t operator>>(size_t shift) const noexcept {
-        return uintN_t(*this) >>= shift;
-    }
-
-    constexpr uintN_t operator<<(int shift) const noexcept {
-        return uintN_t(*this) <<= shift;
-    }
-    constexpr uintN_t operator>>(int shift) const noexcept {
-        return uintN_t(*this) >>= shift;
-    }
 
     /* Comparison operators */
 
