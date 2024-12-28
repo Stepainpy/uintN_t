@@ -107,6 +107,22 @@ struct uintN_t {
     }
 
     /**
+     * @brief  Add `rhs` to number and save result in number
+     * @param  rhs second number for addition
+     * @return Carrying from addition
+     */
+    constexpr bool assign_add(digit_t rhs) noexcept {
+        digit_t old_lhs_val = digits[0];
+        digits[0] += rhs;
+        bool carry = digits[0] < old_lhs_val;
+        for (size_t i = 1; carry && i < digit_count; i++) {
+            old_lhs_val = digits[i];
+            carry = ++digits[i] < old_lhs_val;
+        }
+        return carry;
+    }
+
+    /**
      * @brief Shift bits to left by `shift`
      * @param shift bit shift, must be in range [`1`, `digit_width` - `1`]
      */
@@ -675,38 +691,76 @@ constexpr size_t cexpr_strlen(const char* str) noexcept {
     return count;
 }
 
-#define evsTHREEWAY_CMP(l, r) (r < l) - (l < r)
-
-constexpr int cexpr_strcmp(const char* lhs, const char* rhs) noexcept {
-    const size_t lhs_len = cexpr_strlen(lhs);
-    const size_t rhs_len = cexpr_strlen(rhs);
-    if (lhs_len != rhs_len)
-        return evsTHREEWAY_CMP(lhs_len, rhs_len);
-    while (*lhs && *lhs == *rhs) ++lhs, ++rhs;
-    return evsTHREEWAY_CMP(*lhs, *rhs);
+constexpr uint32_t char_to_digit(char ch) noexcept {
+    if ('0' <= ch && ch <= '9')
+        return ch - '0';
+    if ('a' <= ch && ch <= 'z')
+        return 10 + ch - 'a';
+    if ('A' <= ch && ch <= 'Z')
+        return 10 + ch - 'A';
+    return -1;
 }
 
-static constexpr auto max_128_value =
-    "340282366920938463463374607431768211455";
-static constexpr auto max_256_value =
-    "1157920892373161954235709850086879078532"
-    "69984665640564039457584007913129639935";
-static constexpr auto max_512_value =
-    "1340780792994259709957402499820584612747"
-    "9365820592393377723561443721764030073546"
-    "9768018742981669034276900318581864860508"
-    "53753882811946569946433649006084095";
-static constexpr auto max_1024_value =
-    "1797693134862315907729305190789024733617"
-    "9769789423065727343008115773267580550096"
-    "3132708477322407536021120113879871393357"
-    "6587897688144166224928474306394741243777"
-    "6789342486548527630221960124609411945308"
-    "2952085005768838150682342462881473913110"
-    "5408272371633505106845862982399472459384"
-    "79716304835356329624224137215";
-
 static constexpr auto log10_2 = 0.3010299956639812L;
+
+template <size_t B>
+constexpr uintN_t<B> from_literal(const char* literal) noexcept {
+    enum class literal_base {
+        bin = 1, oct = 3,
+        dec = 0, hex = 4
+    } base = literal_base::dec;
+
+    if (*literal == '0') {
+        base = literal_base::oct;
+        ++literal;
+
+        if (*literal == 'x' || *literal == 'X') {
+            base = literal_base::hex;
+            ++literal;
+        } else if (*literal == 'b' || *literal == 'B') {
+            base = literal_base::bin;
+            ++literal;
+        }
+    }
+
+    const size_t lit_len = cexpr_strlen(literal);
+    bool exit_cond = false;
+    switch (base) {
+        case literal_base::bin: exit_cond = lit_len > B; break;
+        case literal_base::hex: exit_cond = lit_len > B/4; break;
+        case literal_base::dec:
+        exit_cond = lit_len > static_cast<size_t>(B * log10_2) + 1;
+        break;
+        case literal_base::oct:
+        exit_cond = lit_len > B/3 + 1 ||
+            (lit_len == B/3 + 1 && *literal > '3');
+        break;
+    }
+    if (exit_cond)
+        return ~uintN_t<B>{};
+
+    uintN_t<B> out, out_c;
+    while (*literal) {
+        const uint32_t next_digit = char_to_digit(*literal++);
+        switch (base) {
+            case literal_base::dec: {
+                bool carry = false;
+                out_c = out << 3;
+                carry |= out.bit(B - 1) || out.bit(B - 2) || out.bit(B - 3);
+                carry |= out_c.assign_add(out << 1);
+                carry |= out_c.assign_add(next_digit);
+                out = out_c;
+                if (carry) return ~uintN_t<B>{};
+            } break;
+            default: {
+                out.small_shift_left(static_cast<size_t>(base));
+                out.digits[0] |= next_digit;
+            } break;
+        }
+    }
+
+    return out;
+}
 
 } // namespace detail
 
@@ -736,15 +790,10 @@ constexpr uintN_t<bits>& uintN_t<bits>::operator%=(const uintN_t<bits>& rhs) noe
 
 namespace uintN_t_literals {
 
-#define evsDEFINE_LITERAL_SUFFUX(Bits)                                                 \
-constexpr uintN_t<Bits> operator""_Ui ## Bits (const char* literal) noexcept {         \
-    if (detail::cexpr_strcmp(literal, detail::max_ ## Bits ## _value) > 0) return {0}; \
-    uintN_t<Bits> out;                                                                 \
-    do {                                                                               \
-        out = (out << 3) + (out << 1); /* multiplication by 10 */                      \
-        out += {static_cast<uintN_t<Bits>::digit_t>(*literal - '0')};                  \
-    } while (*++literal);                                                              \
-    return out; }                                                                      \
+#define evsDEFINE_LITERAL_SUFFUX(BITS)            \
+constexpr uintN_t<BITS> operator""_Ui ## BITS     \
+    (const char* literal) noexcept {              \
+    return detail::from_literal<BITS>(literal); }
 
 evsDEFINE_LITERAL_SUFFUX(128)
 evsDEFINE_LITERAL_SUFFUX(256)

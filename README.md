@@ -44,5 +44,5 @@ int main() {
 ## TODO
 
 - [ ] Add support for C++11
-- [ ] Add literal check in operator
+- [x] Add literal check in operator
 - [ ] Full implement Toom-Cook algorithm with k = 4
