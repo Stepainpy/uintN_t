@@ -448,6 +448,178 @@ constexpr uintN_t<64> karatsuba(
     };
 }
 
+/* Toom-4 algorithm explain
+Math base:
+P(t) = p_3*t^3 + p_2*t^2 + p_1*t + p_0
+Q(t) = q_3*t^3 + q_2*t^2 + q_1*t + q_0
+R(t) = r_6*t^6 + r_5*t^5 + r_4*t^4 + r_3*t^3 + r_2*t^2 + r_1*t + r_0
+where
+R(t) = P(t) * Q(t)
+
+whereas
+P(B/4) = lhs
+Q(B/4) = rhs
+therefore
+R(B/4) = P(B/4) * Q(B/4) = lhs * rhs
+
+1) Find values of R in 7 points (use recursive multiplication):
+R(0) = P(0) * Q(0)
+R(1) = P(1) * Q(1)
+...
+R(6) = P(6) * Q(6)
+
+2) Calculation delta values of y
+Δy^k_i = Δy^{k-1}_{i+1} - Δy^{k-1}_i
+Δy^0_i = R(x_i) i.e. x_i = i, where i = [0, 6]
+as triangle
+y_0
+    y_1 - y_0 = y^1_0
+y_1                   y^1_1 - y^1_0 = y^2_0
+    y_2 - y_1 = y^1_1                       ...
+y_2                            ...
+           ...
+...
+
+3) Calculation coefficients of Newton polynomial
+c_i = y^i_0 / i!, where i = [0, 6]
+
+N(x) =
+    c_0 +
+    c_1 * x +
+    c_2 * x * (x - 1) +
+    c_3 * x * (x - 1) * (x - 2) +
+    c_4 * x * (x - 1) * (x - 2) * (x - 3) +
+    c_5 * x * (x - 1) * (x - 2) * (x - 3) * (x - 4) +
+    c_6 * x * (x - 1) * (x - 2) * (x - 3) * (x - 4) * (x - 5)
+
+4) Calculation coefficients of R
+
+c_6  c_5
+     -5 * c_6
+-------------
+c_6  m0_0      c_4
+     -4 * c_6  -4 * m0_0
+------------------------
+c_6  m1_0      m1_0       c_3
+     -3 * c_6  -3 * m1_0  -3 * m1_1
+-----------------------------------
+c_6  m2_0      m2_1       m2_2       c_2
+     -2 * c_6  -2 * m2_0  -2 * m2_1  -2 * m2_2
+----------------------------------------------
+c_6  m3_0      m3_1       m3_2       m3_3       c_1
+     -1 * c_6  -1 * m3_0  -1 * m3_1  -1 * m3_2  -1 * m3_3
+---------------------------------------------------------  c_0
+r_6  r_5       r_4        r_3        r_2        r_1        r_0
+
+5) Substitute B/4 in R and get result
+
+literature: https://ido.tsu.ru/iop_res1/teorcrypto/text/1_34.html
+*/
+
+template <size_t B>
+constexpr uintN_t<B*2> _fast_mul( // same as russian_peasant
+    const uintN_t<B>& lhs, uint16_t rhs) noexcept {
+    uintN_t<B*2> out, left = lhs;
+    while (rhs) {
+        if (rhs & 1) out += left;
+        left.small_shift_left(1);
+        rhs >>= 1;
+    }
+    return out;
+}
+
+constexpr uint16_t _ipow(uint16_t base, uint16_t exp) noexcept {
+    uint16_t out = 1;
+    evsIRANGE(i, exp) out *= base;
+    return out;
+}
+
+template <size_t B>
+static constexpr uintN_t<B> fact_vals[7] = {
+    {1}, {1}, {2}, {6}, {24}, {120}, {720}
+};
+
+template <size_t B>
+constexpr uintN_t<B*2> toom_4(
+    const uintN_t<B>& lhs,
+    const uintN_t<B>& rhs
+) noexcept {
+    using doub_num_t = uintN_t<B*2>;
+    using half_num_t = uintN_t<B/2>;
+    using quar_num_t = uintN_t<B/4>;    
+
+    half_num_t p01, p23, q01, q23;
+    quar_num_t p[4] {}, q[4] {};
+
+    // 0) Split numbers by coefficients
+    lhs.split(p01, p23); rhs.split(q01, q23);
+    p01.split(p[0], p[1]); p23.split(p[2], p[3]);
+    q01.split(q[0], q[1]); q23.split(q[2], q[3]);
+
+    // 1) Find values of R in 7 points
+    half_num_t P_y[7] {}, Q_y[7] {};
+    evsIRANGE(i, 7) {
+        evsIRANGE(j, 4) {
+            P_y[i] += _fast_mul(p[j], _ipow(i, j));
+            Q_y[i] += _fast_mul(p[j], _ipow(i, j));
+        }
+    }
+    doub_num_t R_y[7] {};
+    evsIRANGE(i, 7) {
+        quar_num_t P_y_low = static_cast<quar_num_t>(P_y[i]);
+        quar_num_t Q_y_low = static_cast<quar_num_t>(Q_y[i]);
+        uint32_t P_y_carrying = P_y[i].digits[half_num_t::digit_count / 2]; // max 16 bit
+        uint32_t Q_y_carrying = Q_y[i].digits[half_num_t::digit_count / 2]; // max 16 bit
+        R_y[i] = toom_4(P_y_low, Q_y_low);
+        R_y[i] += static_cast<doub_num_t>(_fast_mul(Q_y_low, P_y_carrying)) << (B/4);
+        R_y[i] += static_cast<doub_num_t>(_fast_mul(P_y_low, Q_y_carrying)) << (B/4);
+        R_y[i] += doub_num_t{P_y_carrying * Q_y_carrying} << (B/2);
+    }
+
+    // 2,3) Calculation deltas and Newton coefficients
+    doub_num_t Newton_coefs[7] {};
+    doub_num_t y_deltas[7][7] {};
+    evsIRANGE(i, 7) y_deltas[0][i] = R_y[i];
+    for (size_t i = 1; i < 7; i++)
+        for (size_t j = 0; j < 7 - i; j++)
+            y_deltas[i][j] = y_deltas[i - 1][j + 1] - y_deltas[i - 1][j];
+    evsIRANGE(i, 7)
+        Newton_coefs[i] = y_deltas[i][0] / fact_vals<B*2>[i];
+
+    // 4) Calculation coefficients of R
+    doub_num_t intermed_calc[7] {};
+    for (uint16_t base = 5, i = 2; base > 0; base--, i++) {
+        for (size_t j = 1; j > i; j++)
+            intermed_calc[6 - j] = static_cast<doub_num_t>(
+                _fast_mul(Newton_coefs[7 - j], base));
+        for (size_t j = 1; j > i; j++)
+            Newton_coefs[6 - j] -= intermed_calc[6 - j];
+    }
+
+    // 5) Substitute B/4 in R and get result
+    doub_num_t out;
+    for (size_t i = 0, shift = 0; i < 7; i++, shift += B/4)
+        out += Newton_coefs[i] << shift;
+
+    return out;
+}
+
+template <> // base variant for recursion if 32
+constexpr uintN_t<64> toom_4(
+    const uintN_t<32>& lhs,
+    const uintN_t<32>& rhs
+) noexcept {
+    return karatsuba(lhs, rhs);
+}
+
+template <> // base variant for recursion if 64
+constexpr uintN_t<128> toom_4(
+    const uintN_t<64>& lhs,
+    const uintN_t<64>& rhs
+) noexcept {
+    return karatsuba(lhs, rhs);
+}
+
 template <size_t B>
 constexpr uintN_t<B*2> russian_peasant(
     const uintN_t<B>& lhs,
