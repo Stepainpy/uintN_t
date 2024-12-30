@@ -9,10 +9,12 @@
 #include <compare>
 #endif
 
-#if __cplusplus >= 201402L
-#define CONSTEXPR_GREATER_CXX11 constexpr
+#define evsHAS_BRACED_INIT_LIST __cplusplus >= 201402L
+
+#if evsHAS_BRACED_INIT_LIST
+#define evsCONSTEXPR_GREATER_CXX11 constexpr
 #else
-#define CONSTEXPR_GREATER_CXX11
+#define evsCONSTEXPR_GREATER_CXX11
 #endif
 
 /* Info: for macros use namespace prefix 'evs' */
@@ -36,7 +38,7 @@ constexpr uint64_t merge_32_to_64(uint32_t low, uint32_t high) noexcept {
     return static_cast<uint64_t>(high) << 32 | low;
 }
 
-CONSTEXPR_GREATER_CXX11 void split_64_to_32(
+evsCONSTEXPR_GREATER_CXX11 void split_64_to_32(
     uint64_t num, uint32_t& low, uint32_t& high) noexcept {
     low  = static_cast<uint32_t>(num);
     high = static_cast<uint32_t>(num >> 32);
@@ -62,7 +64,7 @@ struct uintN_t {
 
     /* Conversions */
 
-    CONSTEXPR_GREATER_CXX11 operator bool() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 operator bool() const noexcept {
         evsIRANGE(i, digit_count)
             if (digits[i])
                 return true;
@@ -78,7 +80,7 @@ struct uintN_t {
 
     /* Widening conversion (1 -> 01) */
     template <size_t other_bits, evsENABLE(other_bits > bits)>
-    CONSTEXPR_GREATER_CXX11 operator uintN_t<other_bits>() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 operator uintN_t<other_bits>() const noexcept {
         uintN_t<other_bits> out;
         evsIRANGE(i, digit_count)
             out.digits[i] = digits[i];
@@ -87,7 +89,7 @@ struct uintN_t {
 
     /* Narrowing conversion (12 -> 2) */
     template <size_t other_bits, evsENABLE(other_bits < bits)>
-    CONSTEXPR_GREATER_CXX11 explicit operator uintN_t<other_bits>() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 explicit operator uintN_t<other_bits>() const noexcept {
         uintN_t<other_bits> out;
         evsIRANGE(i, out.digit_count)
             out.digits[i] = digits[i];
@@ -101,7 +103,7 @@ struct uintN_t {
      * @param  rhs second number for addition
      * @return Carrying from addition
      */
-    CONSTEXPR_GREATER_CXX11 bool assign_add(const uintN_t& rhs) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 bool assign_add(const uintN_t& rhs) noexcept {
         bool carry = false;
         evsIRANGE(i, digit_count) {
             digit_t old_lhs_i_val = digits[i];
@@ -118,7 +120,7 @@ struct uintN_t {
      * @param  rhs second number for addition
      * @return Carrying from addition
      */
-    CONSTEXPR_GREATER_CXX11 bool assign_add(digit_t rhs) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 bool assign_add(digit_t rhs) noexcept {
         digit_t old_lhs_val = digits[0];
         digits[0] += rhs;
         bool carry = digits[0] < old_lhs_val;
@@ -133,7 +135,7 @@ struct uintN_t {
      * @brief Shift bits to left by `shift`
      * @param shift bit shift, must be in range [`1`, `digit_width` - `1`]
      */
-    CONSTEXPR_GREATER_CXX11 void small_shift_left(size_t shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 void small_shift_left(size_t shift) noexcept {
         if (!shift || shift >= digit_width) return;
         for (size_t i = digit_count - 1; i > 0; i--)
             digits[i] = digits[i] << shift | digits[i - 1] >> (digit_width - shift);
@@ -143,7 +145,7 @@ struct uintN_t {
      * @brief Shift bits to right by `shift`
      * @param shift bit shift, must be in range [`1`, `digit_width` - `1`]
      */
-    CONSTEXPR_GREATER_CXX11 void small_shift_right(size_t shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 void small_shift_right(size_t shift) noexcept {
         if (!shift || shift >= digit_width) return;
         evsIRANGE(i, digit_count - 1)
             digits[i] = digits[i] >> shift | digits[i + 1] << (digit_width - shift);
@@ -155,7 +157,7 @@ struct uintN_t {
      *        equal shift by `digit_width` * `shift`
      * @param shift digit shift, must be in range [`1`, `digit_count` - `1`]
      */
-    CONSTEXPR_GREATER_CXX11 void digit_shift_left(size_t shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 void digit_shift_left(size_t shift) noexcept {
         if (shift >= digit_count) return clear();
         for (size_t i = digit_count - 1; i > shift - 1; i--)
             digits[i] = digits[i - shift];
@@ -166,7 +168,7 @@ struct uintN_t {
      *        equal shift by `digit_width` * `shift`
      * @param shift digit shift, must be in range [`1`, `digit_count` - `1`]
      */
-    CONSTEXPR_GREATER_CXX11 void digit_shift_right(size_t shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 void digit_shift_right(size_t shift) noexcept {
         if (shift >= digit_count) return clear();
         evsIRANGE(i, digit_count - shift)
             digits[i] = digits[i + shift];
@@ -177,12 +179,12 @@ struct uintN_t {
     /* Unary operators */
 
     constexpr uintN_t operator+() const noexcept { return *this; }
-    CONSTEXPR_GREATER_CXX11 uintN_t operator-() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t operator-() const noexcept {
         uintN_t out = ~(*this);
         out.assign_add(1);
         return out;
     }
-    CONSTEXPR_GREATER_CXX11 uintN_t operator~() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t operator~() const noexcept {
         uintN_t out = *this;
         evsIRANGE(i, digit_count)
             out.digits[i] = ~out.digits[i];
@@ -191,9 +193,9 @@ struct uintN_t {
 
     /* Increment/Decrement */
 
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator++() noexcept { return *this += 1; }
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator--() noexcept {
-#if __cplusplus >= 201402L
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator++() noexcept { return *this += 1; }
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator--() noexcept {
+#if evsHAS_BRACED_INIT_LIST
         return *this -= {1};
 #else
         uintN_t one; one.digits[0] = 1;
@@ -201,32 +203,32 @@ struct uintN_t {
 #endif
     }
 
-    CONSTEXPR_GREATER_CXX11 uintN_t operator++(int) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t operator++(int) noexcept {
         uintN_t out = *this; ++(*this);
         return out;
     }
-    CONSTEXPR_GREATER_CXX11 uintN_t operator--(int) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t operator--(int) noexcept {
         uintN_t out = *this; --(*this);
         return out;
     }
 
     /* Binary-assign operators */
 
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator+=(const uintN_t& rhs) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator+=(const uintN_t& rhs) noexcept {
         assign_add(rhs);
         return *this;
     }
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator+=(digit_t rhs) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator+=(digit_t rhs) noexcept {
         assign_add(rhs);
         return *this;
     }
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator-=(const uintN_t& rhs) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator-=(const uintN_t& rhs) noexcept {
         return *this += -rhs;
     }
 
-#define evsBITWISE_ASGOPER_TMPL(op)                                             \
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator op(const uintN_t& rhs) noexcept { \
-        evsIRANGE(i, digit_count) digits[i] op rhs.digits[i];                   \
+#define evsBITWISE_ASGOPER_TMPL(op)                                      \
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator op(const uintN_t& rhs)  \
+        noexcept { evsIRANGE(i, digit_count) digits[i] op rhs.digits[i]; \
         return *this; }
     
     evsBITWISE_ASGOPER_TMPL(&=)
@@ -235,36 +237,36 @@ struct uintN_t {
 
 #undef evsBITWISE_ASGOPER_TMPL
 
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator<<=(size_t shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator<<=(size_t shift) noexcept {
         digit_shift_left(shift / digit_width);
         small_shift_left(shift % digit_width);
         return *this;
     }
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator>>=(size_t shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator>>=(size_t shift) noexcept {
         digit_shift_right(shift / digit_width);
         small_shift_right(shift % digit_width);
         return *this;
     }
 
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator<<=(int shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator<<=(int shift) noexcept {
         if (shift < 0) return *this >>= -shift;
         return *this <<= static_cast<size_t>(shift);
     }
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator>>=(int shift) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator>>=(int shift) noexcept {
         if (shift < 0) return *this <<= -shift;
         return *this >>= static_cast<size_t>(shift);
     }
 
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator*=(const uintN_t&) noexcept;
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator*=(uint16_t) noexcept;
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator*=(const uintN_t&) noexcept;
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator*=(uint16_t) noexcept;
 
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator/=(const uintN_t&) noexcept;
-    CONSTEXPR_GREATER_CXX11 uintN_t& operator%=(const uintN_t&) noexcept;
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator/=(const uintN_t&) noexcept;
+    evsCONSTEXPR_GREATER_CXX11 uintN_t& operator%=(const uintN_t&) noexcept;
 
     /* Binary operators */
 
-#define evsBINOP_VIA_BINASGOP(op, param_type)                         \
-    CONSTEXPR_GREATER_CXX11 uintN_t operator op(param_type rhs) const \
+#define evsBINOP_VIA_BINASGOP(op, param_type)                            \
+    evsCONSTEXPR_GREATER_CXX11 uintN_t operator op(param_type rhs) const \
     noexcept { return uintN_t(*this) op ## = rhs; }
 
     evsBINOP_VIA_BINASGOP(+, const uintN_t&)
@@ -295,14 +297,14 @@ struct uintN_t {
      * @param  rhs the number to be compared with
      * @return Int value as less (< 0), greater (> 0) and equal (== 0)
      */
-    CONSTEXPR_GREATER_CXX11 int compare(const uintN_t& rhs) const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 int compare(const uintN_t& rhs) const noexcept {
         size_t i = digit_count - 1;
         while (i > 0 && digits[i] == rhs.digits[i]) --i;
         return (rhs.digits[i] < digits[i]) - (digits[i] < rhs.digits[i]);
     }
 
-#define evsCMP_OPER_TMPL(op)                                     \
-    CONSTEXPR_GREATER_CXX11 bool operator op(const uintN_t& rhs) \
+#define evsCMP_OPER_TMPL(op)                                        \
+    evsCONSTEXPR_GREATER_CXX11 bool operator op(const uintN_t& rhs) \
     const noexcept { return compare(rhs) op 0; }
 
     evsCMP_OPER_TMPL(==)
@@ -330,7 +332,7 @@ struct uintN_t {
      * @return Int value as `-1` (negative),
      *         `1` (positive) and `0` (equal zero)
      */
-    CONSTEXPR_GREATER_CXX11 int sign() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 int sign() const noexcept {
         const bool sign_bit =
             (digits[digit_count - 1] >> (digit_width - 1)) & 1;
         if (sign_bit) return -1;
@@ -340,7 +342,7 @@ struct uintN_t {
     }
 
     /// Set all digits equal zero, same as `*this = {0}`
-    CONSTEXPR_GREATER_CXX11 void clear() noexcept {
+    evsCONSTEXPR_GREATER_CXX11 void clear() noexcept {
         evsIRANGE(i, digit_count) digits[i] = 0;
     }
 
@@ -349,7 +351,7 @@ struct uintN_t {
      * @param  pos index of bit
      * @return Bit value in `pos`
      */
-    CONSTEXPR_GREATER_CXX11 bool bit(size_t pos) const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 bool bit(size_t pos) const noexcept {
         if (pos >= bits) return false;
         const size_t digit_index = pos / digit_width;
         const size_t   bit_index = pos % digit_width;
@@ -360,7 +362,7 @@ struct uintN_t {
      * @param pos index of bit
      * @param value new value of bit
      */
-    CONSTEXPR_GREATER_CXX11 void bit(size_t pos, bool value) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 void bit(size_t pos, bool value) noexcept {
         if (pos >= bits) return;
         const size_t digit_index = pos / digit_width;
         const size_t   bit_index = pos % digit_width;
@@ -373,7 +375,7 @@ struct uintN_t {
      * @param  pos index of hex digit
      * @return Hex digit in `pos`
      */
-    CONSTEXPR_GREATER_CXX11 uint8_t hex_digit(size_t pos) const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uint8_t hex_digit(size_t pos) const noexcept {
         if (pos >= bits / 4) return 0;
         const size_t digit_index = pos * 4 / digit_width;
         const size_t   hex_index = pos * 4 % digit_width;
@@ -384,7 +386,7 @@ struct uintN_t {
      * @param pos index of hex digit
      * @param value new value of hex digit
      */
-    CONSTEXPR_GREATER_CXX11 void hex_digit(size_t pos, uint8_t value) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 void hex_digit(size_t pos, uint8_t value) noexcept {
         if (pos >= bits / 4) return;
         const size_t digit_index = pos * 4 / digit_width;
         const size_t   hex_index = pos * 4 % digit_width;
@@ -397,7 +399,7 @@ struct uintN_t {
      * @param low lower part of original number
      * @param high higher part of original number
      */
-    CONSTEXPR_GREATER_CXX11 void split(
+    evsCONSTEXPR_GREATER_CXX11 void split(
         uintN_t<bits/2>& low,
         uintN_t<bits/2>& high
     ) const noexcept {
@@ -415,7 +417,7 @@ struct uintN_t {
      * @param low lower part of original number
      * @param high higher part of original number
      */
-    CONSTEXPR_GREATER_CXX11 void merge(
+    evsCONSTEXPR_GREATER_CXX11 void merge(
         const uintN_t<bits/2>& low,
         const uintN_t<bits/2>& high
     ) noexcept {
@@ -444,7 +446,7 @@ namespace detail {
 namespace multiplication {
 
 template <size_t B>
-CONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
     const uintN_t<B>& lhs,
     const uintN_t<B>& rhs
 ) noexcept {
@@ -478,7 +480,7 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
     // if-blocks need because has overflow in x2 and y2
     if (xc) z3 += static_cast<doub_num_t>(y2) << B/2;
     if (yc) z3 += static_cast<doub_num_t>(x2) << B/2;
-#if __cplusplus >= 201402L
+#if evsHAS_BRACED_INIT_LIST
     if (xc && yc) z3 += doub_num_t{1} << B;
 #else
     doub_num_t one; one.digits[0] = 1;
@@ -494,14 +496,14 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
 }
 
 template <> // base variant for recursion
-CONSTEXPR_GREATER_CXX11 uintN_t<64> karatsuba(
+evsCONSTEXPR_GREATER_CXX11 uintN_t<64> karatsuba(
     const uintN_t<32>& lhs,
     const uintN_t<32>& rhs
 ) noexcept {
     uintN_t<32>::extend_digit_t res = 
         static_cast<uintN_t<32>::extend_digit_t>(lhs.digits[0]) *
         static_cast<uintN_t<32>::extend_digit_t>(rhs.digits[0]);
-#if __cplusplus >= 201402L
+#if evsHAS_BRACED_INIT_LIST
     uintN_t<32>::digit_t l = 0, h = 0;
     detail::split_64_to_32(res, l, h);
     return {l, h};
@@ -582,7 +584,7 @@ literature: https://ido.tsu.ru/iop_res1/teorcrypto/text/1_34.html
 */
 
 template <size_t B>
-CONSTEXPR_GREATER_CXX11 uintN_t<B*2> _fast_mul( // same as russian_peasant
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> _fast_mul( // same as russian_peasant
     const uintN_t<B>& lhs, uint16_t rhs) noexcept {
     uintN_t<B*2> out, left = lhs;
     while (rhs) {
@@ -593,13 +595,13 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B*2> _fast_mul( // same as russian_peasant
     return out;
 }
 
-CONSTEXPR_GREATER_CXX11 uint16_t _ipow(uint16_t base, uint16_t exp) noexcept {
+evsCONSTEXPR_GREATER_CXX11 uint16_t _ipow(uint16_t base, uint16_t exp) noexcept {
     uint16_t out = 1;
     evsIRANGE(i, exp) out *= base;
     return out;
 }
 
-#if __cplusplus >= 201402L
+#if evsHAS_BRACED_INIT_LIST
 template <size_t B>
 static constexpr uintN_t<B> fact_vals[7] = {
     {1}, {1}, {2}, {6}, {24}, {120}, {720}
@@ -623,7 +625,7 @@ uintN_t<B> fact_vals(size_t i) {
 #endif
 
 template <size_t B>
-CONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
     const uintN_t<B>& lhs,
     const uintN_t<B>& rhs
 ) noexcept {
@@ -656,7 +658,7 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
         R_y[i] = toom_4(P_y_low, Q_y_low);
         R_y[i] += static_cast<doub_num_t>(_fast_mul(Q_y_low, P_y_carrying)) << (B/4);
         R_y[i] += static_cast<doub_num_t>(_fast_mul(P_y_low, Q_y_carrying)) << (B/4);
-#if __cplusplus >= 201402L
+#if evsHAS_BRACED_INIT_LIST
         R_y[i] += doub_num_t{P_y_carrying * Q_y_carrying} << (B/2);
 #else
         doub_num_t carry; carry.digits[0] = P_y_carrying * Q_y_carrying;
@@ -693,7 +695,7 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
 }
 
 template <> // base variant for recursion if 32
-CONSTEXPR_GREATER_CXX11 uintN_t<64> toom_4(
+evsCONSTEXPR_GREATER_CXX11 uintN_t<64> toom_4(
     const uintN_t<32>& lhs,
     const uintN_t<32>& rhs
 ) noexcept {
@@ -701,7 +703,7 @@ CONSTEXPR_GREATER_CXX11 uintN_t<64> toom_4(
 }
 
 template <> // base variant for recursion if 64
-CONSTEXPR_GREATER_CXX11 uintN_t<128> toom_4(
+evsCONSTEXPR_GREATER_CXX11 uintN_t<128> toom_4(
     const uintN_t<64>& lhs,
     const uintN_t<64>& rhs
 ) noexcept {
@@ -709,7 +711,7 @@ CONSTEXPR_GREATER_CXX11 uintN_t<128> toom_4(
 }
 
 template <size_t B>
-CONSTEXPR_GREATER_CXX11 uintN_t<B*2> russian_peasant(
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> russian_peasant(
     const uintN_t<B>& lhs,
     const uintN_t<B>& rhs
 ) noexcept {
@@ -735,7 +737,7 @@ struct div_result_t {
 
 // https://clck.ru/3FBwXQ (Wikipedia)
 template <size_t B>
-CONSTEXPR_GREATER_CXX11 div_result_t<B> prime(
+evsCONSTEXPR_GREATER_CXX11 div_result_t<B> prime(
     const uintN_t<B>& N,
     const uintN_t<B>& D
 ) noexcept {
@@ -757,13 +759,13 @@ CONSTEXPR_GREATER_CXX11 div_result_t<B> prime(
 
 } // namespace division
 
-CONSTEXPR_GREATER_CXX11 size_t cexpr_strlen(const char* str) noexcept {
+evsCONSTEXPR_GREATER_CXX11 size_t cexpr_strlen(const char* str) noexcept {
     size_t count = 0;
     while (*str) ++str, ++count;
     return count;
 }
 
-CONSTEXPR_GREATER_CXX11 uint32_t char_to_digit(char ch) noexcept {
+evsCONSTEXPR_GREATER_CXX11 uint32_t char_to_digit(char ch) noexcept {
     if ('0' <= ch && ch <= '9')
         return ch - '0';
     if ('a' <= ch && ch <= 'z')
@@ -776,7 +778,7 @@ CONSTEXPR_GREATER_CXX11 uint32_t char_to_digit(char ch) noexcept {
 static constexpr auto log10_2 = 0.3010299956639812L;
 
 template <size_t B>
-CONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept {
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept {
     enum class literal_base {
         bin = 1, oct = 3,
         dec = 0, hex = 4
@@ -837,27 +839,27 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept {
 
 class uint64_with_carry {
 public:
-    CONSTEXPR_GREATER_CXX11 uint64_with_carry() : m_r(0), m_c(0) {}
-    CONSTEXPR_GREATER_CXX11 uint64_with_carry(uint64_t n) : m_r(n), m_c(0) {}
+    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry() : m_r(0), m_c(0) {}
+    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry(uint64_t n) : m_r(n), m_c(0) {}
 
-    CONSTEXPR_GREATER_CXX11 uint8_t carry() const noexcept { return m_c; }
-    CONSTEXPR_GREATER_CXX11 void carry(uint8_t v) noexcept { m_c = v & 1; }
-    CONSTEXPR_GREATER_CXX11 void reg(uint64_t v) noexcept { m_r = v; }
-    CONSTEXPR_GREATER_CXX11 uint32_t low() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uint8_t carry() const noexcept { return m_c; }
+    evsCONSTEXPR_GREATER_CXX11 void carry(uint8_t v) noexcept { m_c = v & 1; }
+    evsCONSTEXPR_GREATER_CXX11 void reg(uint64_t v) noexcept { m_r = v; }
+    evsCONSTEXPR_GREATER_CXX11 uint32_t low() const noexcept {
         return static_cast<uint32_t>(m_r);
     }
-    CONSTEXPR_GREATER_CXX11 uint32_t high() const noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uint32_t high() const noexcept {
         return static_cast<uint32_t>(m_r >> 32);
     }
 
-    CONSTEXPR_GREATER_CXX11 uint64_with_carry&
+    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry&
     operator+=(const uint64_with_carry& rhs) noexcept {
         uint64_t res = m_r + rhs.m_r;
         m_c ^= rhs.m_c ^ (uint8_t)(res < m_r);
         m_r = res;
         return *this;
     }
-    CONSTEXPR_GREATER_CXX11 uint64_with_carry
+    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry
     operator+(const uint64_with_carry& rhs) const noexcept {
         return uint64_with_carry(*this) += rhs;
     }
@@ -871,14 +873,14 @@ private:
 
 // Define uintN_t multiplication operators
 template <size_t bits> // general variant
-CONSTEXPR_GREATER_CXX11 uintN_t<bits>&
+evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator*=(const uintN_t<bits>& rhs) noexcept {
     return (*this = static_cast<uintN_t<bits>>(
         detail::multiplication::karatsuba(*this, rhs)
     ));
 }
 template <size_t bits> // specefic variant for rhs < 2^16
-CONSTEXPR_GREATER_CXX11 uintN_t<bits>&
+evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator*=(uint16_t rhs) noexcept {
     auto copy = *this;
     clear();
@@ -892,21 +894,21 @@ CONSTEXPR_GREATER_CXX11 uintN_t<bits>&
 
 // Define uintN_t division operators
 template <size_t bits>
-CONSTEXPR_GREATER_CXX11 uintN_t<bits>&
+evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator/=(const uintN_t<bits>& rhs) noexcept {
     return (*this = detail::division::prime(*this, rhs).quotient);
 }
 template <size_t bits>
-CONSTEXPR_GREATER_CXX11 uintN_t<bits>&
+evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator%=(const uintN_t<bits>& rhs) noexcept {
     return (*this = detail::division::prime(*this, rhs).remainder);
 }
 
 namespace uintN_t_literals {
 
-#define evsDEFINE_LITERAL_SUFFUX(BITS)                      \
-CONSTEXPR_GREATER_CXX11 uintN_t<BITS> operator""_Ui ## BITS \
-    (const char* literal) noexcept {                        \
+#define evsDEFINE_LITERAL_SUFFUX(BITS)                         \
+evsCONSTEXPR_GREATER_CXX11 uintN_t<BITS> operator""_Ui ## BITS \
+    (const char* literal) noexcept {                           \
     return detail::from_literal<BITS>(literal); }
 
 evsDEFINE_LITERAL_SUFFUX(128)
@@ -924,7 +926,7 @@ using ::detail::multiplication::karatsuba;
 using ::detail::multiplication::russian_peasant;
 
 template <size_t B>
-CONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
     // from https://ido.tsu.ru/iop_res1/teorcrypto/text/1_3.html
     using ed_t = typename uintN_t<B>::extend_digit_t;
     using uiwc = detail::uint64_with_carry;
@@ -946,7 +948,7 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
             out.digits[i + j] = cuv.low();
         }
 
-#if __cplusplus >= 201402L
+#if evsHAS_BRACED_INIT_LIST
         uintN_t<B*2> cu = {cuv.high(), cuv.carry()};
 #else
         uintN_t<B*2> cu;
