@@ -364,8 +364,32 @@ struct uintN_t {
         if (pos >= bits) return;
         const size_t digit_index = pos / digit_width;
         const size_t   bit_index = pos % digit_width;
-        if (value) digits[digit_index] |=   digit_t{1} << bit_index;
-        else       digits[digit_index] &= ~(digit_t{1} << bit_index);
+        const digit_t mask = ~(1 << bit_index);
+        (digits[digit_index] &= mask) |= digit_t{value} << bit_index;
+    }
+
+    /**
+     * @brief  Get hex digit from `pos`
+     * @param  pos index of hex digit
+     * @return Hex digit in `pos`
+     */
+    CONSTEXPR_GREATER_CXX11 uint8_t hex_digit(size_t pos) const noexcept {
+        if (pos >= bits / 4) return 0;
+        const size_t digit_index = pos * 4 / digit_width;
+        const size_t   hex_index = pos * 4 % digit_width;
+        return digits[digit_index] >> hex_index & 15;
+    }
+    /**
+     * @brief Set hex digit to passed value in `pos`
+     * @param pos index of hex digit
+     * @param value new value of hex digit
+     */
+    CONSTEXPR_GREATER_CXX11 void hex_digit(size_t pos, uint8_t value) noexcept {
+        if (pos >= bits / 4) return;
+        const size_t digit_index = pos * 4 / digit_width;
+        const size_t   hex_index = pos * 4 % digit_width;
+        const digit_t mask = ~(15 << hex_index);
+        (digits[digit_index] &= mask) |= digit_t{value & 15U} << hex_index;
     }
 
     /**
@@ -810,6 +834,38 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept {
     return out;
 }
 
+class uint64_with_carry {
+public:
+    CONSTEXPR_GREATER_CXX11 uint64_with_carry() : m_r(0), m_c(0) {}
+    CONSTEXPR_GREATER_CXX11 uint64_with_carry(uint64_t n) : m_r(n), m_c(0) {}
+
+    CONSTEXPR_GREATER_CXX11 uint8_t carry() const noexcept { return m_c; }
+    CONSTEXPR_GREATER_CXX11 void carry(uint8_t v) noexcept { m_c = v & 1; }
+    CONSTEXPR_GREATER_CXX11 void reg(uint64_t v) noexcept { m_r = v; }
+    CONSTEXPR_GREATER_CXX11 uint32_t low() const noexcept {
+        return static_cast<uint32_t>(m_r);
+    }
+    CONSTEXPR_GREATER_CXX11 uint32_t high() const noexcept {
+        return static_cast<uint32_t>(m_r >> 32);
+    }
+
+    CONSTEXPR_GREATER_CXX11 uint64_with_carry&
+    operator+=(const uint64_with_carry& rhs) noexcept {
+        uint64_t res = m_r + rhs.m_r;
+        m_c ^= rhs.m_c ^ (uint8_t)(res < m_r);
+        m_r = res;
+        return *this;
+    }
+    CONSTEXPR_GREATER_CXX11 uint64_with_carry
+    operator+(const uint64_with_carry& rhs) const noexcept {
+        return uint64_with_carry(*this) += rhs;
+    }
+
+private:
+    uint64_t m_r;
+    uint8_t  m_c : 1;
+};
+
 } // namespace detail
 
 // Define uintN_t multiplication operators
@@ -865,6 +921,43 @@ namespace uintN_t_alg {
 
 using ::detail::multiplication::karatsuba;
 using ::detail::multiplication::russian_peasant;
+
+template <size_t B>
+CONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
+    // from https://ido.tsu.ru/iop_res1/teorcrypto/text/1_3.html
+    using ed_t = typename uintN_t<B>::extend_digit_t;
+    using uiwc = detail::uint64_with_carry;
+    uintN_t<B*2> out;
+    uiwc cuv;
+
+    const size_t n = x.digit_count;
+    evsIRANGE(i, n) {
+        cuv.reg(ed_t{out.digits[i * 2]} +
+            ed_t{x.digits[i]} * ed_t{x.digits[i]});
+        cuv.carry(0);
+        out.digits[i * 2] = cuv.low();
+
+        for (size_t j = i + 1; j < n; j++) {
+            cuv = uiwc(detail::merge_32_to_64(cuv.high(), cuv.carry()))
+                + uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
+                + uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
+                + uiwc(out.digits[i + j]);
+            out.digits[i + j] = cuv.low();
+        }
+
+#if __cplusplus >= 201402L
+        uintN_t<B*2> cu = {cuv.high(), cuv.carry()};
+#else
+        uintN_t<B*2> cu;
+        cu.digits[0] = cuv.high();
+        cu.digits[1] = cuv.carry();
+#endif
+        cu.digit_shift_left(i + n);
+        out += cu;
+    }
+
+    return out;
+}
 
 } // namespace uintN_t_alg
 
