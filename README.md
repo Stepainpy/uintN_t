@@ -5,7 +5,7 @@ Implement all base operations for integers (`+`, `-`, `*` and etc.).
 
 ## Using in project
 
-Just Include the file `uintN_t.hpp`.  
+Just include the file `uintN_t.hpp`.  
 Create a variable with type uintN_t<*bits*> where *bits* - integer width (32, 64, 128, ...).
 
 Ways create of object:
@@ -38,8 +38,8 @@ int main() {
 - to `bool`
 - to `digit_t` (explicit)
 - to `extend_digit_t` (explicit)
-- to `uintN_t` with less width
-- to `uintN_t` with greater width (explicit)
+- to `uintN_t` with greater width
+- to `uintN_t` with less width (explicit)
 - to `std::string` from `std::to_string` or `std::to_chars` or ostream
 
 ## TODO
