@@ -812,8 +812,9 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept {
         return ~uintN_t<B>{};
 
     uintN_t<B> out, out_c;
-    while (*literal) {
-        const uint32_t next_digit = char_to_digit(*literal++);
+    for (; *literal; ++literal) {
+        if (*literal == '\'') continue;
+        const uint32_t next_digit = char_to_digit(*literal);
         switch (base) {
             case literal_base::dec: {
                 bool carry = false;
@@ -821,8 +822,8 @@ CONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept {
                 carry |= out.bit(B - 1) || out.bit(B - 2) || out.bit(B - 3);
                 carry |= out_c.assign_add(out << 1);
                 carry |= out_c.assign_add(next_digit);
-                out = out_c;
                 if (carry) return ~uintN_t<B>{};
+                out = out_c;
             } break;
             default: {
                 out.small_shift_left(static_cast<size_t>(base));
