@@ -444,11 +444,26 @@ template <>
 constexpr uintN_t<32>::operator uintN_t<32>::extend_digit_t()
 const noexcept { return digits[0]; }
 
-// Base size aliases
+/* Base size aliases */
+
 using uint128_t  = uintN_t<128>;
 using uint256_t  = uintN_t<256>;
 using uint512_t  = uintN_t<512>;
 using uint1024_t = uintN_t<1024>;
+
+/* Max value macros */
+
+#define UINT128_MAX  (~uint128_t{})
+#define UINT256_MAX  (~uint256_t{})
+#define UINT512_MAX  (~uint512_t{})
+#define UINT1024_MAX (~uint1024_t{})
+
+/* Function macros for integer constant */
+
+#define UINT128_C(val)  val ## _Ui128
+#define UINT256_C(val)  val ## _Ui256
+#define UINT512_C(val)  val ## _Ui512
+#define UINT1024_C(val) val ## _Ui1024
 
 namespace detail {
 
