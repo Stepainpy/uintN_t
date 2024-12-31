@@ -964,21 +964,21 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     return (*this = detail::division::naive(*this, rhs).remainder);
 }
 
-namespace uintN_t_literals {
+#define evsDEFINE_LITERAL_SUFFUX(B)             \
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> operator  \
+    ""_Ui ## B (const char* literal) noexcept { \
+    return detail::from_literal<B>(literal); }
 
-#define evsDEFINE_LITERAL_SUFFUX(BITS)                         \
-evsCONSTEXPR_GREATER_CXX11 uintN_t<BITS> operator""_Ui ## BITS \
-    (const char* literal) noexcept {                           \
-    return detail::from_literal<BITS>(literal); }
+namespace uintN_t_literals {
 
 evsDEFINE_LITERAL_SUFFUX(128)
 evsDEFINE_LITERAL_SUFFUX(256)
 evsDEFINE_LITERAL_SUFFUX(512)
 evsDEFINE_LITERAL_SUFFUX(1024)
 
-#undef evsDEFINE_LITERAL_SUFFUX
-
 } // namespace uintN_t_literals
+
+#undef evsDEFINE_LITERAL_SUFFUX
 
 namespace uintN_t_alg {
 
