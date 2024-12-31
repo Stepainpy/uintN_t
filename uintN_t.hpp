@@ -869,6 +869,16 @@ private:
     uint8_t  m_c : 1;
 };
 
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 size_t left_zeros(uintN_t<B> n) noexcept {
+    size_t out = 0;
+    while (!n.bit(B - 1)) {
+        n.small_shift_left(1);
+        ++out;
+    }
+    return out;
+}
+
 } // namespace detail
 
 // Define uintN_t multiplication operators
@@ -960,6 +970,18 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
     }
 
     return out;
+}
+
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> isqrt(const uintN_t<B>& x) noexcept {
+    uintN_t<B> out = uintN_t<B>{1} <<
+        ((B - detail::left_zeros(x) + 1) >> 1);
+    for (;;) {
+        uintN_t<B> newout = (out + x / out) >> 1;
+        if (newout >= out)
+            return out;
+        out = newout;
+    }
 }
 
 } // namespace uintN_t_alg
