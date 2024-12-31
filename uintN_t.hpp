@@ -881,6 +881,7 @@ private:
 
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 size_t left_zeros(uintN_t<B> n) noexcept {
+    if (!n) return B;
     size_t out = 0;
     while (!n.bit(B - 1)) {
         n.small_shift_left(1);
