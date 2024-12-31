@@ -474,6 +474,12 @@ uintN_t<32> uintN_ctor<32>(uint32_t f, uint32_t) noexcept {
 
 namespace multiplication {
 
+/**
+ * @brief  Multiplication by Karatsuba algorithm
+ * @param  lhs left-side operand
+ * @param  rhs right-side operand
+ * @return Multiplication result with double bit width
+ */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
     const uintN_t<B>& lhs,
@@ -641,6 +647,12 @@ uintN_t<B> fact_vals(size_t i) {
 #define evsFACT_VALUE(b, i) fact_vals<b>(i)
 #endif
 
+/**
+ * @brief  Multiplication by Toom-Cook algorithm with k = 4
+ * @param  lhs left-side operand
+ * @param  rhs right-side operand
+ * @return Multiplication result with double bit width
+ */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
     const uintN_t<B>& lhs,
@@ -720,6 +732,12 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<128> toom_4(
     const uintN_t<64>& rhs
 ) noexcept { return karatsuba(lhs, rhs); }
 
+/**
+ * @brief  Multiplication by russian peasant algorithm
+ * @param  lhs left-side operand
+ * @param  rhs right-side operand
+ * @return Multiplication result with double bit width
+ */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> russian_peasant(
     const uintN_t<B>& lhs,
@@ -745,14 +763,20 @@ struct div_result_t {
     uintN_t<B> remainder;
 };
 
-// https://clck.ru/3FBwXQ (Wikipedia)
+/**
+ * @brief  Division by long division algorithm
+ * @param  N numerator
+ * @param  D denominator
+ * @return Quotient and remainder of  division
+ */
 template <size_t B>
-evsCONSTEXPR_GREATER_CXX11 div_result_t<B> prime(
+evsCONSTEXPR_GREATER_CXX11 div_result_t<B> naive(
     const uintN_t<B>& N,
     const uintN_t<B>& D
 ) noexcept {
-    // Division by zero => return {0, 0}
-    if (!D) return {};
+    // from https://clck.ru/3FBwXQ (Wikipedia)
+    // Division by zero => return {max, max}
+    if (!D) return {~uintN_t<B>{}, ~uintN_t<B>{}};
 
     uintN_t<B> Q, R;
     for (size_t i = B; i--;) {
@@ -917,12 +941,12 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
 template <size_t bits>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator/=(const uintN_t<bits>& rhs) noexcept {
-    return (*this = detail::division::prime(*this, rhs).quotient);
+    return (*this = detail::division::naive(*this, rhs).quotient);
 }
 template <size_t bits>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator%=(const uintN_t<bits>& rhs) noexcept {
-    return (*this = detail::division::prime(*this, rhs).remainder);
+    return (*this = detail::division::naive(*this, rhs).remainder);
 }
 
 namespace uintN_t_literals {
@@ -946,6 +970,11 @@ namespace uintN_t_alg {
 using ::detail::multiplication::karatsuba;
 using ::detail::multiplication::russian_peasant;
 
+/**
+ * @brief  Fast sqгaring function
+ * @param  x value for squaring
+ * @return Result of operations `x^2`
+ */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
     // from https://ido.tsu.ru/iop_res1/teorcrypto/text/1_3.html
@@ -977,6 +1006,11 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
     return out;
 }
 
+/**
+ * @brief  Find floor value of square root
+ * @param  x value for square root
+ * @return Result of operations `floor(sqrt(x))`
+ */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B> isqrt(const uintN_t<B>& x) noexcept {
     uintN_t<B> out = evsUINTN_CTOR(B, 1) <<
