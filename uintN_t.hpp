@@ -1061,7 +1061,7 @@ static constexpr char digit_set[] = {
 };
 
 template <class T>
-constexpr void reverse(T* first, T* last) noexcept {
+evsCONSTEXPR_GREATER_CXX11 void reverse(T* first, T* last) noexcept {
     if (first == last) return;
     for (--last; first < last; ++first, --last) {
         T tmp = *last;
@@ -1071,7 +1071,7 @@ constexpr void reverse(T* first, T* last) noexcept {
 }
 
 template <size_t B>
-constexpr char* to_chars_i(
+evsCONSTEXPR_GREATER_CXX11 char* to_chars_i(
     char* first, char* last,
     uintN_t<B> number,
     bool* overflow, int base
@@ -1106,7 +1106,7 @@ constexpr char* to_chars_i(
 }
 
 template <size_t B>
-constexpr char* to_chars_pow2(
+evsCONSTEXPR_GREATER_CXX11 char* to_chars_pow2(
     char* first, char* last,
     uintN_t<B> number,
     bool* overflow, int pow
@@ -1245,7 +1245,7 @@ basic_ostream<CharT, Traits>& operator<<(
 }
 
 template <size_t B>
-constexpr void swap(
+evsCONSTEXPR_GREATER_CXX11 void swap(
     uintN_t<B>& lhs,
     uintN_t<B>& rhs
 ) noexcept {
