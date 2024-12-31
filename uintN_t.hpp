@@ -9,18 +9,23 @@
 #include <compare>
 #endif
 
+/* Info: for macros use namespace prefix 'evs' */
+
 #define evsHAS_BRACED_INIT_LIST __cplusplus >= 201402L
 
-#if evsHAS_BRACED_INIT_LIST
+#if __cplusplus >= 201402L
 #define evsCONSTEXPR_GREATER_CXX11 constexpr
 #else
 #define evsCONSTEXPR_GREATER_CXX11
 #endif
 
-/* Info: for macros use namespace prefix 'evs' */
 /* Comment: I don't want write full for-loop */
 #define evsIRANGE(i_var, max_val) \
 for (size_t i_var = 0; i_var < max_val; ++i_var)
+
+#if !(evsHAS_BRACED_INIT_LIST)
+template <size_t> struct uintN_t;
+#endif
 
 namespace detail {
 
@@ -33,6 +38,15 @@ using enable_if_t = typename enable_if<B, T>::type;
 
 #define evsENABLE(cond) \
 ::detail::enable_if_t<(cond), int> = 0
+
+#if evsHAS_BRACED_INIT_LIST
+#define evsUINTN_CTOR(B, ...) uintN_t<B>{__VA_ARGS__}
+#else
+template <size_t B> uintN_t<B> uintN_ctor(uint32_t, uint32_t) noexcept;
+template <size_t B> uintN_t<B> uintN_ctor(uint32_t) noexcept;
+#define evsUINTN_CTOR(B, ...) \
+::detail::uintN_ctor<B>(__VA_ARGS__)
+#endif
 
 constexpr uint64_t merge_32_to_64(uint32_t low, uint32_t high) noexcept {
     return static_cast<uint64_t>(high) << 32 | low;
@@ -195,12 +209,7 @@ struct uintN_t {
 
     evsCONSTEXPR_GREATER_CXX11 uintN_t& operator++() noexcept { return *this += 1; }
     evsCONSTEXPR_GREATER_CXX11 uintN_t& operator--() noexcept {
-#if evsHAS_BRACED_INIT_LIST
-        return *this -= {1};
-#else
-        uintN_t one; one.digits[0] = 1;
-        return *this -= one;
-#endif
+        return *this -= evsUINTN_CTOR(bits, 1);
     }
 
     evsCONSTEXPR_GREATER_CXX11 uintN_t operator++(int) noexcept {
@@ -443,6 +452,26 @@ using uint1024_t = uintN_t<1024>;
 
 namespace detail {
 
+#if !(evsHAS_BRACED_INIT_LIST)
+template <size_t B>
+uintN_t<B> uintN_ctor(uint32_t f, uint32_t s) noexcept {
+    uintN_t<B> out;
+    out.digits[0] = f;
+    out.digits[1] = s;
+    return out;
+}
+template <size_t B>
+uintN_t<B> uintN_ctor(uint32_t f) noexcept {
+    return uintN_ctor<B>(f, 0);
+}
+template <>
+uintN_t<32> uintN_ctor<32>(uint32_t f, uint32_t) noexcept {
+    uintN_t<32> out;
+    out.digits[0] = f;
+    return out;
+}
+#endif
+
 namespace multiplication {
 
 template <size_t B>
@@ -480,12 +509,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
     // if-blocks need because has overflow in x2 and y2
     if (xc) z3 += static_cast<doub_num_t>(y2) << B/2;
     if (yc) z3 += static_cast<doub_num_t>(x2) << B/2;
-#if evsHAS_BRACED_INIT_LIST
-    if (xc && yc) z3 += doub_num_t{1} << B;
-#else
-    doub_num_t one; one.digits[0] = 1;
-    if (xc && yc) z3 += one << B;
-#endif
+    if (xc && yc) z3 += evsUINTN_CTOR(B*2, 1) << B;
     doub_num_t z1 = z3 - z2 - z0;
     
     doub_num_t out = z0;
@@ -503,16 +527,9 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<64> karatsuba(
     uintN_t<32>::extend_digit_t res = 
         static_cast<uintN_t<32>::extend_digit_t>(lhs.digits[0]) *
         static_cast<uintN_t<32>::extend_digit_t>(rhs.digits[0]);
-#if evsHAS_BRACED_INIT_LIST
-    uintN_t<32>::digit_t l = 0, h = 0;
-    detail::split_64_to_32(res, l, h);
-    return {l, h};
-#else
     uintN_t<64> out;
-    detail::split_64_to_32(res,
-        out.digits[0], out.digits[1]);
+    detail::split_64_to_32(res, out.digits[0], out.digits[1]);
     return out;
-#endif
 }
 
 /* Toom-4 algorithm explain
@@ -606,7 +623,7 @@ template <size_t B>
 static constexpr uintN_t<B> fact_vals[7] = {
     {1}, {1}, {2}, {6}, {24}, {120}, {720}
 };
-#define FACT_VALUE(b, i) fact_vals<b>[i]
+#define evsFACT_VALUE(b, i) fact_vals<b>[i]
 #else
 template <size_t B>
 uintN_t<B> fact_vals(size_t i) {
@@ -621,7 +638,7 @@ uintN_t<B> fact_vals(size_t i) {
     }
     return out;
 }
-#define FACT_VALUE(b, i) fact_vals<b>(i)
+#define evsFACT_VALUE(b, i) fact_vals<b>(i)
 #endif
 
 template <size_t B>
@@ -658,12 +675,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
         R_y[i] = toom_4(P_y_low, Q_y_low);
         R_y[i] += static_cast<doub_num_t>(_fast_mul(Q_y_low, P_y_carrying)) << (B/4);
         R_y[i] += static_cast<doub_num_t>(_fast_mul(P_y_low, Q_y_carrying)) << (B/4);
-#if evsHAS_BRACED_INIT_LIST
-        R_y[i] += doub_num_t{P_y_carrying * Q_y_carrying} << (B/2);
-#else
-        doub_num_t carry; carry.digits[0] = P_y_carrying * Q_y_carrying;
-        R_y[i] += carry << (B/2);
-#endif
+        R_y[i] += evsUINTN_CTOR(B*2, P_y_carrying * Q_y_carrying) << (B/2);
     }
 
     // 2,3) Calculation deltas and Newton coefficients
@@ -674,7 +686,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
         for (size_t j = 0; j < 7 - i; j++)
             y_deltas[i][j] = y_deltas[i - 1][j + 1] - y_deltas[i - 1][j];
     evsIRANGE(i, 7)
-        Newton_coefs[i] = y_deltas[i][0] / FACT_VALUE(B*2, i);
+        Newton_coefs[i] = y_deltas[i][0] / evsFACT_VALUE(B*2, i);
 
     // 4) Calculation coefficients of R
     doub_num_t intermed_calc[7] {};
@@ -694,21 +706,19 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
     return out;
 }
 
+#undef evsFACT_VALUE
+
 template <> // base variant for recursion if 32
 evsCONSTEXPR_GREATER_CXX11 uintN_t<64> toom_4(
     const uintN_t<32>& lhs,
     const uintN_t<32>& rhs
-) noexcept {
-    return karatsuba(lhs, rhs);
-}
+) noexcept { return karatsuba(lhs, rhs); }
 
 template <> // base variant for recursion if 64
 evsCONSTEXPR_GREATER_CXX11 uintN_t<128> toom_4(
     const uintN_t<64>& lhs,
     const uintN_t<64>& rhs
-) noexcept {
-    return karatsuba(lhs, rhs);
-}
+) noexcept { return karatsuba(lhs, rhs); }
 
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> russian_peasant(
@@ -958,13 +968,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
             out.digits[i + j] = cuv.low();
         }
 
-#if evsHAS_BRACED_INIT_LIST
-        uintN_t<B*2> cu = {cuv.high(), cuv.carry()};
-#else
-        uintN_t<B*2> cu;
-        cu.digits[0] = cuv.high();
-        cu.digits[1] = cuv.carry();
-#endif
+        uintN_t<B*2> cu = evsUINTN_CTOR(B*2, cuv.high(), cuv.carry());
         cu.digit_shift_left(i + n);
         out += cu;
     }
@@ -974,7 +978,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
 
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B> isqrt(const uintN_t<B>& x) noexcept {
-    uintN_t<B> out = uintN_t<B>{1} <<
+    uintN_t<B> out = evsUINTN_CTOR(B, 1) <<
         ((B - detail::left_zeros(x) + 1) >> 1);
     for (;;) {
         uintN_t<B> newout = (out + x / out) >> 1;
