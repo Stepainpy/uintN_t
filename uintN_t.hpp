@@ -58,6 +58,18 @@ evsCONSTEXPR_GREATER_CXX11 void split_64_to_32(
     high = static_cast<uint32_t>(num >> 32);
 }
 
+template <class T>
+evsCONSTEXPR_GREATER_CXX11 void swap_ptr(T* lhs, T* rhs) noexcept {
+    T tmp = *rhs; *rhs = *lhs; *lhs = tmp;
+}
+
+template <class T>
+evsCONSTEXPR_GREATER_CXX11 void reverse(T* first, T* last) noexcept {
+    if (first == last) return;
+    for (--last; first < last; ++first, --last)
+        swap_ptr(first, last);
+}
+
 } // namespace detail
 
 /**
@@ -188,6 +200,52 @@ struct uintN_t {
             digits[i] = digits[i + shift];
         for (size_t i = digit_count - 1; i > digit_count - shift - 1; i--)
             digits[i] = 0;
+    }
+
+    /**
+     * @brief Rotate bits to left by `shift`
+     * @param shift bit rotate, must be in range [`1`, `digit_width` - `1`]
+     */
+    evsCONSTEXPR_GREATER_CXX11 void small_rotate_left(size_t shift) noexcept {
+        if (!shift || shift >= digit_width) return;
+        digit_t carry = digits[digit_count - 1] >> (digit_width - shift);
+        small_shift_left(shift);
+        digits[0] |= carry;
+    }
+    /**
+     * @brief Rotate bits to right by `shift`
+     * @param shift bit rotate, must be in range [`1`, `digit_width` - `1`]
+     */
+    evsCONSTEXPR_GREATER_CXX11 void small_rotate_right(size_t shift) noexcept {
+        if (!shift || shift >= digit_width) return;
+        digit_t carry = digits[0] << (digit_width - shift);
+        small_shift_right(shift);
+        digits[digit_count - 1] |= carry;
+    }
+
+    /**
+     * @brief Rotate digit to left by `shift`,
+     *        equal rotate operation for array of ints (digits)
+     * @param shift digit rotate, must be in range [`1`, `digit_count` - `1`]
+     */
+    evsCONSTEXPR_GREATER_CXX11 void digit_rotate_left(size_t shift) noexcept {
+        shift %= digit_count;
+        if (!shift) return;
+        detail::reverse(digits, digits + digit_count - shift);
+        detail::reverse(digits + digit_count - shift, digits + digit_count);
+        detail::reverse(digits, digits + digit_count);
+    }
+    /**
+     * @brief Rotate digit to right by `shift`,
+     *        equal rotate operation for array of ints (digits)
+     * @param shift digit rotate, must be in range [`1`, `digit_count` - `1`]
+     */
+    evsCONSTEXPR_GREATER_CXX11 void digit_rotate_right(size_t shift) noexcept {
+        shift %= digit_count;
+        if (!shift) return;
+        detail::reverse(digits, digits + shift);
+        detail::reverse(digits + shift, digits + digit_count);
+        detail::reverse(digits, digits + digit_count);
     }
 
     /* Unary operators */
@@ -1038,6 +1096,34 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> isqrt(const uintN_t<B>& x) noexcept {
     }
 }
 
+/// Left rotate function
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotl(uintN_t<B> n, size_t shift) noexcept {
+    n.digit_rotate_left(shift / n.digit_width);
+    n.small_rotate_left(shift % n.digit_width);
+    return n;
+}
+/// Right rotate function
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotr(uintN_t<B> n, size_t shift) noexcept {
+    n.digit_rotate_right(shift / n.digit_width);
+    n.small_rotate_right(shift % n.digit_width);
+    return n;
+}
+
+/// Left rotate function
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotl(const uintN_t<B>& n, int shift) noexcept {
+    if (shift < 0) return rotr(n, -shift);
+    return rotl(n, static_cast<size_t>(shift));
+}
+/// Right rotate function
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotr(const uintN_t<B>& n, int shift) noexcept {
+    if (shift < 0) return rotl(n, -shift);
+    return rotr(n, static_cast<size_t>(shift));
+}
+
 } // namespace uintN_t_alg
 
 #include <algorithm>
@@ -1059,16 +1145,6 @@ static constexpr char digit_set[] = {
     'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',
     'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
 };
-
-template <class T>
-evsCONSTEXPR_GREATER_CXX11 void reverse(T* first, T* last) noexcept {
-    if (first == last) return;
-    for (--last; first < last; ++first, --last) {
-        T tmp = *last;
-        *last = *first;
-        *first = tmp;
-    }
-}
 
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 char* to_chars_i(
