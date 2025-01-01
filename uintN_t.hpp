@@ -1156,6 +1156,27 @@ struct numeric_limits<uintN_t<B>>
 };
 
 template <size_t B>
+struct hash<uintN_t<B>> {
+    using argument_type = uintN_t<B>;
+    using result_type   = size_t;
+
+    result_type operator()(const argument_type& val) const noexcept {
+        return static_cast<result_type>(detail::merge_32_to_64(
+            val.digits[0], val.digits[1]));
+    }
+};
+
+template <>
+struct hash<uintN_t<32>> {
+    using argument_type = uintN_t<32>;
+    using result_type   = size_t;
+
+    result_type operator()(const argument_type& val) const noexcept {
+        return static_cast<result_type>(val.digits[0]);
+    }
+};
+
+template <size_t B>
 string to_string(const uintN_t<B>& value) {
     char buffer[std::numeric_limits<uintN_t<B>>::digits10 + 1] {};
     const char* buf_end = detail::to_chars_i(

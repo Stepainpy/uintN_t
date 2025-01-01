@@ -28,6 +28,7 @@ int main() {
 ## STL support
 
 - `std::numeric_limits`
+- `std::hash`
 - `std::to_string`
 - `std::to_chars`
 - `std::ostream.operator<<`
