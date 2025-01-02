@@ -8,9 +8,10 @@ Implement all base operations for integers (`+`, `-`, `*` and etc.).
 Just include the file `uintN_t.hpp`.  
 Create a variable with type uintN_t<*bits*> where *bits* - integer width (32, 64, 128, ...).
 
-Ways create of object:
+Ways of create object:
 - using literal suffix `_Ui` + *bits* from namespace `uintN_t_literals`
 - initialize with `{0, 0, ...}` i.e. array of digits (C++14 and later)
+- create from 'short' number or array of digits with use `create_uintN_t` with template parameter of *bits*
 
 ## Example
 
@@ -20,7 +21,9 @@ Ways create of object:
 using namespace uintN_t_literals;
 
 int main() {
-    uintN_t<128> n = 12345_Ui128; // or n = {12345};
+    uintN_t<128> n = 12345_Ui128;
+    // or n = {12345}
+    // or n = create_uintN_t<128>(12345)
     std::cout << n << '\n';
 }
 ```
@@ -48,3 +51,4 @@ int main() {
 - [x] Add support for C++11
 - [x] Add literal check in operator
 - [ ] Full implement Toom-Cook algorithm with k = 4
+- [ ] Add conversion from string or istream

@@ -523,6 +523,36 @@ using uint1024_t = uintN_t<1024>;
 #define UINT512_C(val)  val ## _Ui512
 #define UINT1024_C(val) val ## _Ui1024
 
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B>
+create_uintN_t(uint32_t num) noexcept {
+    return evsUINTN_CTOR(B, num);
+}
+
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B>
+create_uintN_t(uint64_t num) noexcept {
+    uint32_t l = 0, h = 0;
+    detail::split_64_to_32(num, l, h);
+    return evsUINTN_CTOR(B, l, h);
+}
+
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B>
+create_uintN_t(uint32_t low, uint32_t high) noexcept {
+    return evsUINTN_CTOR(B, low, high);
+}
+
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B>
+create_uintN_t(const typename uintN_t<B>::digit_t
+    (&digits)[uintN_t<B>::digit_count]) noexcept {
+    uintN_t<B> out;
+    evsIRANGE(i, out.digit_count)
+        out.digits[i] = digits[i];
+    return out;
+}
+
 namespace detail {
 
 #if !(evsHAS_BRACED_INIT_LIST)
@@ -1126,16 +1156,28 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotr(const uintN_t<B>& n, int shift) noexc
 
 } // namespace uintN_t_alg
 
+/* Start of including of STL */
+
 #include <algorithm>
 #include <version>
 #include <ostream>
 #include <utility>
 #include <string>
 #include <limits>
+#include <array>
 
 #if __cpp_lib_to_chars >= 201611L
 #include <charconv>
 #endif
+
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> create_uintN_t(const std::array<
+    typename uintN_t<B>::digit_t, uintN_t<B>::digit_count>& digits) noexcept {
+    uintN_t<B> out;
+    evsIRANGE(i, out.digit_count)
+        out.digits[i] = digits[i];
+    return out;
+}
 
 namespace detail {
 
