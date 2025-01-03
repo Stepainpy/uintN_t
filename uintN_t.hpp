@@ -1161,9 +1161,11 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotr(const uintN_t<B>& n, int shift) noexc
 #include <algorithm>
 #include <version>
 #include <ostream>
+#include <istream>
 #include <utility>
 #include <string>
 #include <limits>
+#include <cctype>
 #include <array>
 
 #if __cpp_lib_to_chars >= 201611L
@@ -1380,7 +1382,82 @@ basic_ostream<CharT, Traits>& operator<<(
         for (ptrdiff_t i = 0; i < lw; i++) os << fillch;
         os.write(out_number + offset, nl - offset);
     }
+
     return os;
+}
+
+template <size_t B, class CharT, class Traits>
+basic_istream<CharT, Traits>& operator>>(
+    basic_istream<CharT, Traits>& is, uintN_t<B>& n) {
+    const auto fls = is.flags();
+    auto peek_ch = [&is] () -> char {
+        return is.narrow(Traits::to_char_type(is.peek()), EOF); };
+    auto  get_ch = [&is] () -> char {
+        return is.narrow(Traits::to_char_type(is.get()),  EOF); };
+    
+    if (!(fls & is.skipws)) {
+        if (isspace(peek_ch()))
+            is.setstate(is.failbit);
+        else if (is.peek() == Traits::eof())
+            is.setstate(is.eofbit);
+        return is;
+    } else while (isspace(peek_ch()))
+        is.ignore(1);
+
+    int num_base = 10;
+    if (fls & is.oct) num_base = 8;
+    else if (fls & is.hex) {
+        num_base = 16;
+        if (peek_ch() == '0') {
+            is.ignore(1);
+            if (peek_ch() == 'x' || peek_ch() == 'X')
+                is.ignore(1);
+        }
+    }
+
+    n.clear();
+    for (;;) {
+        if (is.peek() == Traits::eof()) {
+            is.setstate(is.eofbit);
+            break;
+        }
+
+        if (detail::char_to_digit(peek_ch()) == uint32_t(-1)) break;
+        const uint32_t next_digit = detail::char_to_digit(get_ch());
+        if (next_digit >= num_base) break;
+
+        if (num_base == 8) {
+            if (n.hex_digit(B/4 - 1) >> 1) {
+                is.setstate(is.failbit);
+                n.clear(); n = ~n;
+                break;
+            }
+            n.small_shift_left(3);
+            n.digits[0] |= next_digit;
+        } else if (num_base == 16) {
+            if (n.hex_digit(B/4 - 1)) {
+                is.setstate(is.failbit);
+                n.clear(); n = ~n;
+                break;
+            }
+            n.small_shift_left(4);
+            n.digits[0] |= next_digit;
+        } else {
+            bool carry = false;
+            uintN_t<B> n_c = n << 3;
+            carry |= n.bit(B - 1) || n.bit(B - 2) || n.bit(B - 3);
+            carry |= n_c.assign_add(n << 1);
+            carry |= n_c.assign_add(next_digit);
+            if (carry) {
+                is.setstate(is.failbit);
+                n.clear(); n = ~n;
+                break;
+            }
+            n = n_c;
+        }
+    }
+
+    return is;
 }
 
 template <size_t B>

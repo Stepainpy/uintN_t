@@ -35,6 +35,7 @@ int main() {
 - `std::to_string`
 - `std::to_chars`
 - `std::ostream.operator<<`
+- `std::istream.operator>>`
 - `std::swap`
 
 ## Conversions
@@ -51,4 +52,4 @@ int main() {
 - [x] Add support for C++11
 - [x] Add literal check in operator
 - [ ] Full implement Toom-Cook algorithm with k = 4
-- [ ] Add conversion from string or istream
+- [ ] Add conversion from string or istream (P.S.: istream is done)
