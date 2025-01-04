@@ -902,6 +902,21 @@ evsCONSTEXPR_GREATER_CXX11 size_t cexpr_strlen(const char* str) noexcept {
     return count;
 }
 
+constexpr bool cexpr_isspace(char ch) noexcept {
+    return ch ==  ' ' || ch == '\r'
+        || ch == '\n' || ch == '\f'
+        || ch == '\t' || ch == '\v';
+}
+
+constexpr bool ispow2(uint32_t n) noexcept { return !(n & (n - 1)); }
+
+evsCONSTEXPR_GREATER_CXX11 size_t simple_log2(uint32_t n) noexcept {
+    if (!n) return -1;
+    size_t out = 0;
+    for (; n > 1; n >>= 1) ++out;
+    return out;
+}
+
 evsCONSTEXPR_GREATER_CXX11 uint32_t char_to_digit(char ch) noexcept {
     if ('0' <= ch && ch <= '9')
         return ch - '0';
@@ -1165,7 +1180,6 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotr(const uintN_t<B>& n, int shift) noexc
 #include <utility>
 #include <string>
 #include <limits>
-#include <cctype>
 #include <array>
 
 #if __cpp_lib_to_chars >= 201611L
@@ -1251,6 +1265,59 @@ evsCONSTEXPR_GREATER_CXX11 char* to_chars_pow2(
     return it;
 }
 
+enum class from_chars_status {
+    ok, invalid_argument, overflow
+};
+
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> from_chars_i(
+    const char* first, const char* last,
+    from_chars_status& state,
+    const char** end, int base
+) noexcept {
+    if (end) *end = first;
+    state = from_chars_status::ok;
+
+    uintN_t<B> out;
+    const char* parse_first = first;
+    for (; first != last; ++first) {
+        const uint32_t next_digit = char_to_digit(*first);
+        if (next_digit >= uint32_t(base)) break;
+
+        if (ispow2(base)) {
+            bool carry = false;
+            for (size_t i = 1; i <= simple_log2(base); i++)
+                carry |= out.bit(B - i);
+            if (carry) {
+                state = from_chars_status::overflow;
+                if (end) *end = last;
+                break;
+            }
+            out.small_shift_left(simple_log2(base));
+            out.digits[0] |= next_digit;
+        } else {
+            uintN_t<B> out_prev = out;
+            out *= static_cast<uint16_t>(base);
+            if (out < out_prev) {
+                state = from_chars_status::overflow;
+                if (end) *end = last;
+                break;
+            }
+            out += next_digit;
+        }
+    }
+    if (state == from_chars_status::overflow)
+        for (; first != last; ++first)
+            if (char_to_digit(*first) >= uint32_t(base))
+                break;
+
+    if (parse_first == first)
+        state = from_chars_status::invalid_argument;
+    if (end) *end = first;
+
+    return out;
+}
+
 } // namespace detail
 
 namespace std {
@@ -1305,6 +1372,7 @@ string to_string(const uintN_t<B>& value) {
 }
 
 #if __cpp_lib_to_chars >= 201611L
+
 template <size_t B>
 constexpr to_chars_result to_chars(
     char* first, char* last, const uintN_t<B>& value, int base = 10) noexcept {
@@ -1326,6 +1394,36 @@ constexpr to_chars_result to_chars(
         return {last, errc::value_too_large};
     return {end, errc{}};
 }
+
+template <size_t B>
+constexpr from_chars_result from_chars(
+    const char* first, const char* last,
+    uintN_t<B>& value, int base = 10
+) noexcept {
+    if (base < 2 || base > 36)
+        return {first, std::errc::invalid_argument};
+
+    from_chars_result res{first, errc{}};
+    auto state = detail::from_chars_status::ok;
+    const uintN_t<B> newval =
+        detail::from_chars_i<B>(first, last, state, &res.ptr, base);
+
+    switch (state) {
+        case detail::from_chars_status::ok: {
+            value = newval;
+            res.ec = errc{};
+        } break;
+        case detail::from_chars_status::overflow:
+            res.ec = errc::result_out_of_range;
+        break;
+        case detail::from_chars_status::invalid_argument:
+            res.ec = errc::invalid_argument;
+        break;
+    }
+
+    return res;
+}
+
 #endif // __cpp_lib_to_chars >= 201611L
 
 template <size_t B, class CharT, class Traits>
@@ -1396,12 +1494,12 @@ basic_istream<CharT, Traits>& operator>>(
         return is.narrow(Traits::to_char_type(is.get()),  EOF); };
     
     if (!(fls & is.skipws)) {
-        if (isspace(peek_ch()))
+        if (detail::cexpr_isspace(peek_ch()))
             is.setstate(is.failbit);
         else if (is.peek() == Traits::eof())
             is.setstate(is.eofbit);
         return is;
-    } else while (isspace(peek_ch()))
+    } else while (detail::cexpr_isspace(peek_ch()))
         is.ignore(1);
 
     int num_base = 10;

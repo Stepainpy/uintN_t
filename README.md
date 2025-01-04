@@ -34,6 +34,7 @@ int main() {
 - `std::hash`
 - `std::to_string`
 - `std::to_chars`
+- `std::from_chars`
 - `std::ostream.operator<<`
 - `std::istream.operator>>`
 - `std::swap`
