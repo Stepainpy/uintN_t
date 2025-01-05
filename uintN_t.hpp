@@ -1379,6 +1379,11 @@ string to_string(const uintN_t<B>& value) {
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B> strtoumax(
     const char* nptr, char** endptr, int base) noexcept {
+    if (base && (base < 2 || base > 36)) {
+        if (endptr) *endptr = const_cast<char*>(nptr);
+        return uintN_t<B>{};
+    }
+    
     char* original_nptr = const_cast<char*>(nptr);
     while (detail::cexpr_isspace(*nptr)) ++nptr;
 
