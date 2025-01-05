@@ -1371,6 +1371,48 @@ string to_string(const uintN_t<B>& value) {
     return string(buffer, buf_end - buffer);
 }
 
+/**
+ * @brief  Analog of `std::strtoumax` with template parameter,
+ *         behaivor as original function
+ * @tparam B count of bits in output integer
+ */
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> strtoumax(
+    const char* nptr, char** endptr, int base) noexcept {
+    char* original_nptr = const_cast<char*>(nptr);
+    while (detail::cexpr_isspace(*nptr)) ++nptr;
+
+    bool invert_out = false;
+    if (*nptr == '+') ++nptr;
+    if (*nptr == '-') {
+        invert_out = true;
+        ++nptr;
+    }
+
+    int calc_base = 10;
+    if (!base && *nptr == '0') {
+        calc_base = 8;
+        ++nptr;
+        if (*nptr == 'x' || *nptr == 'X') {
+            calc_base = 16;
+            ++nptr;
+        }
+    }
+
+    auto state = detail::from_chars_status::ok;
+    const uintN_t<B> out = detail::from_chars_i<B>(
+        nptr, nptr + detail::cexpr_strlen(nptr), state,
+        const_cast<const char**>(endptr), calc_base);
+    
+    if (state == detail::from_chars_status::invalid_argument) {
+        if (endptr) *endptr = original_nptr;
+        return uintN_t<B>{};
+    } else if (state == detail::from_chars_status::overflow)
+        return ~uintN_t<B>{};
+
+    return invert_out ? -out : out;
+}
+
 #if __cpp_lib_to_chars >= 201611L
 
 template <size_t B>
