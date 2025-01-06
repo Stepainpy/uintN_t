@@ -395,14 +395,20 @@ struct uintN_t {
     /* Other functions */
 
     /**
+     * @brief  Get value of sign bit (last left)
+     * @return Bit value
+     */
+    constexpr bool sign_bit() const noexcept {
+        return digits[digit_count - 1] >> (digit_width - 1);
+    }
+
+    /**
      * @brief  Get sign of number
      * @return Int value as `-1` (negative),
      *         `1` (positive) and `0` (equal zero)
      */
     evsCONSTEXPR_GREATER_CXX11 int sign() const noexcept {
-        const bool sign_bit =
-            (digits[digit_count - 1] >> (digit_width - 1)) & 1;
-        if (sign_bit) return -1;
+        if (sign_bit()) return -1;
         evsIRANGE(i, digit_count)
             if (digits[i]) return 1;
         return 0;
@@ -1185,6 +1191,18 @@ template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B> rotr(const uintN_t<B>& n, int shift) noexcept {
     if (shift < 0) return rotl(n, -shift);
     return rotr(n, static_cast<size_t>(shift));
+}
+
+/// Right arithmetic shift function
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B> sar(uintN_t<B> n, size_t shift) noexcept {
+    const bool sign = n.sign_bit();
+    n >>= shift;
+    if (sign && shift < B)
+        n |= ~uintN_t<B>{} << (B - shift);
+    else if (sign && shift >= B)
+        n = ~n;
+    return n;
 }
 
 } // namespace uintN_t_alg
