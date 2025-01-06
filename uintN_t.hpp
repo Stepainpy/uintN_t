@@ -902,6 +902,15 @@ evsCONSTEXPR_GREATER_CXX11 size_t cexpr_strlen(const char* str) noexcept {
     return count;
 }
 
+evsCONSTEXPR_GREATER_CXX11 size_t cexpr_count_of_char(
+    const char* str, char ch) noexcept {
+    size_t count = 0;
+    for (; *str; ++str)
+        if (*str == ch)
+            ++count;
+    return count;
+}
+
 constexpr bool cexpr_isspace(char ch) noexcept {
     return ch ==  ' ' || ch == '\r'
         || ch == '\n' || ch == '\f'
@@ -949,7 +958,12 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept
         }
     }
 
-    const size_t lit_len = cexpr_strlen(literal);
+    const size_t lit_len = cexpr_strlen(literal)
+#if __cplusplus >= 201402L
+        - cexpr_count_of_char(literal, '\'')
+#endif
+    ;
+
     bool exit_cond = false;
     switch (base) {
         case literal_base::bin: exit_cond = lit_len > B; break;
