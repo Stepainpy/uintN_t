@@ -896,13 +896,15 @@ evsCONSTEXPR_GREATER_CXX11 div_result_t<B> naive(
 
 } // namespace division
 
-evsCONSTEXPR_GREATER_CXX11 size_t cexpr_strlen(const char* str) noexcept {
+namespace cexpr {
+
+evsCONSTEXPR_GREATER_CXX11 size_t strlen(const char* str) noexcept {
     size_t count = 0;
     while (*str) ++str, ++count;
     return count;
 }
 
-evsCONSTEXPR_GREATER_CXX11 size_t cexpr_count_of_char(
+evsCONSTEXPR_GREATER_CXX11 size_t count_of_char(
     const char* str, char ch) noexcept {
     size_t count = 0;
     for (; *str; ++str)
@@ -911,11 +913,13 @@ evsCONSTEXPR_GREATER_CXX11 size_t cexpr_count_of_char(
     return count;
 }
 
-constexpr bool cexpr_isspace(char ch) noexcept {
+constexpr bool isspace(char ch) noexcept {
     return ch ==  ' ' || ch == '\r'
         || ch == '\n' || ch == '\f'
         || ch == '\t' || ch == '\v';
 }
+
+} // namespace cexpr
 
 constexpr bool ispow2(uint32_t n) noexcept { return !(n & (n - 1)); }
 
@@ -958,9 +962,9 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept
         }
     }
 
-    const size_t lit_len = cexpr_strlen(literal)
+    const size_t lit_len = cexpr::strlen(literal)
 #if __cplusplus >= 201402L
-        - cexpr_count_of_char(literal, '\'')
+        - cexpr::count_of_char(literal, '\'')
 #endif
     ;
 
@@ -1399,7 +1403,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> strtoumax(
     }
     
     char* original_nptr = const_cast<char*>(nptr);
-    while (detail::cexpr_isspace(*nptr)) ++nptr;
+    while (detail::cexpr::isspace(*nptr)) ++nptr;
 
     bool invert_out = false;
     if (*nptr == '+') ++nptr;
@@ -1420,7 +1424,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> strtoumax(
 
     auto state = detail::from_chars_status::ok;
     const uintN_t<B> out = detail::from_chars_i<B>(
-        nptr, nptr + detail::cexpr_strlen(nptr), state,
+        nptr, nptr + detail::cexpr::strlen(nptr), state,
         const_cast<const char**>(endptr), calc_base);
     
     if (state == detail::from_chars_status::invalid_argument) {
@@ -1555,12 +1559,12 @@ basic_istream<CharT, Traits>& operator>>(
         return is.narrow(Traits::to_char_type(is.get()),  EOF); };
     
     if (!(fls & is.skipws)) {
-        if (detail::cexpr_isspace(peek_ch()))
+        if (detail::cexpr::isspace(peek_ch()))
             is.setstate(is.failbit);
         else if (is.peek() == Traits::eof())
             is.setstate(is.eofbit);
         return is;
-    } else while (detail::cexpr_isspace(peek_ch()))
+    } else while (detail::cexpr::isspace(peek_ch()))
         is.ignore(1);
 
     int num_base = 10;
