@@ -72,6 +72,10 @@ evsCONSTEXPR_GREATER_CXX11 void reverse(T* first, T* last) noexcept {
 
 } // namespace detail
 
+/*-----------------------------------------------.
+|              Definition of uintN_t             |
+'-----------------------------------------------*/
+
 /**
  * @brief  Integer type for large numbers, is aggregate type
  * @tparam bits count of bits in number
@@ -508,6 +512,10 @@ template <>
 constexpr uintN_t<32>::operator uintN_t<32>::extend_digit_t()
 const noexcept { return digits[0]; }
 
+/*-----------------------------------------------.
+|    Definition of often used types and macros   |
+'-----------------------------------------------*/
+
 /* Base size aliases */
 
 using uint128_t  = uintN_t<128>;
@@ -580,6 +588,10 @@ uintN_t<32> uintN_ctor<32>(uint32_t f, uint32_t) noexcept {
     return out;
 }
 #endif
+
+/*-----------------------------------------------.
+|   Implementation of multiplication algorithms  |
+'-----------------------------------------------*/
 
 namespace multiplication {
 
@@ -864,6 +876,10 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> russian_peasant(
 
 } // namespace multiplication
 
+/*-----------------------------------------------.
+|      Implementation of division algorithms     |
+'-----------------------------------------------*/
+
 namespace division {
 
 template <size_t B>
@@ -1058,7 +1074,10 @@ evsCONSTEXPR_GREATER_CXX11 size_t left_zeros(uintN_t<B> n) noexcept {
 
 } // namespace detail
 
-// Define uintN_t multiplication operators
+/*-----------------------------------------------.
+|  Definition mul operators with algorithm funcs |
+'-----------------------------------------------*/
+
 template <size_t bits> // general variant
 evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator*=(const uintN_t<bits>& rhs) noexcept {
@@ -1079,7 +1098,10 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     return *this;
 }
 
-// Define uintN_t division operators
+/*-----------------------------------------------.
+|  Definition div operators with algorithm funcs |
+'-----------------------------------------------*/
+
 template <size_t bits>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     uintN_t<bits>::operator/=(const uintN_t<bits>& rhs) noexcept {
@@ -1091,21 +1113,29 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<bits>&
     return (*this = detail::division::naive(*this, rhs).remainder);
 }
 
-#define evsDEFINE_LITERAL_SUFFUX(B)             \
+/*-----------------------------------------------.
+|          Definition of literal suffix          |
+'-----------------------------------------------*/
+
+#define evsDEFINE_LITERAL_SUFFIX(B)             \
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B> operator  \
     ""_Ui ## B (const char* literal) noexcept { \
     return detail::from_literal<B>(literal); }
 
 namespace uintN_t_literals {
 
-evsDEFINE_LITERAL_SUFFUX(128)
-evsDEFINE_LITERAL_SUFFUX(256)
-evsDEFINE_LITERAL_SUFFUX(512)
-evsDEFINE_LITERAL_SUFFUX(1024)
+evsDEFINE_LITERAL_SUFFIX(128)
+evsDEFINE_LITERAL_SUFFIX(256)
+evsDEFINE_LITERAL_SUFFIX(512)
+evsDEFINE_LITERAL_SUFFIX(1024)
 
 } // namespace uintN_t_literals
 
-#undef evsDEFINE_LITERAL_SUFFUX
+#undef evsDEFINE_LITERAL_SUFFIX
+
+/*-----------------------------------------------.
+|    Implementation of algorithms for uintN_t    |
+'-----------------------------------------------*/
 
 namespace uintN_t_alg {
 
@@ -1207,7 +1237,9 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> sar(uintN_t<B> n, size_t shift) noexcept {
 
 } // namespace uintN_t_alg
 
-/* Start of including of STL */
+/*-----------------------------------------------.
+|           Integration uintN_t in STL           |
+'-----------------------------------------------*/
 
 #include <algorithm>
 #include <version>
@@ -1355,6 +1387,10 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> from_chars_i(
 }
 
 } // namespace detail
+
+/*-----------------------------------------------.
+|             Start of namespace std             |
+'-----------------------------------------------*/
 
 namespace std {
 
