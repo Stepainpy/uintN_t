@@ -595,6 +595,38 @@ uintN_t<32> uintN_ctor<32>(uint32_t f, uint32_t) noexcept {
 
 namespace multiplication {
 
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> naive(
+    const uintN_t<B>& lhs, const uintN_t<B>& rhs
+) noexcept {
+    using half_num_t = uintN_t<B/2>;
+    using doub_num_t = uintN_t<B*2>;
+
+    half_num_t x0, x1; // lhs = x1 * 2^(B/2) + x0
+    half_num_t y0, y1; // rhs = y1 * 2^(B/2) + y0
+    lhs.split(x0, x1);
+    rhs.split(y0, y1);
+
+    doub_num_t out = naive(x0, y0);
+    out += static_cast<doub_num_t>(naive(x0, y1)) << B/2;
+    out += static_cast<doub_num_t>(naive(x1, y0)) << B/2;
+    out += static_cast<doub_num_t>(naive(x1, y1)) << B;
+
+    return out;
+}
+
+template <> // base variant for recursion
+evsCONSTEXPR_GREATER_CXX11 uintN_t<64> naive(
+    const uintN_t<32>& lhs, const uintN_t<32>& rhs
+) noexcept {
+    uintN_t<32>::extend_digit_t res = 
+        static_cast<uintN_t<32>::extend_digit_t>(lhs.digits[0]) *
+        static_cast<uintN_t<32>::extend_digit_t>(rhs.digits[0]);
+    uintN_t<64> out;
+    detail::split_64_to_32(res, out.digits[0], out.digits[1]);
+    return out;
+}
+
 /**
  * @brief  Multiplication by Karatsuba algorithm
  * @param  lhs left-side operand
@@ -603,8 +635,7 @@ namespace multiplication {
  */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
-    const uintN_t<B>& lhs,
-    const uintN_t<B>& rhs
+    const uintN_t<B>& lhs, const uintN_t<B>& rhs
 ) noexcept {
     using half_num_t = uintN_t<B/2>;
     using doub_num_t = uintN_t<B*2>;
@@ -648,16 +679,8 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> karatsuba(
 
 template <> // base variant for recursion
 evsCONSTEXPR_GREATER_CXX11 uintN_t<64> karatsuba(
-    const uintN_t<32>& lhs,
-    const uintN_t<32>& rhs
-) noexcept {
-    uintN_t<32>::extend_digit_t res = 
-        static_cast<uintN_t<32>::extend_digit_t>(lhs.digits[0]) *
-        static_cast<uintN_t<32>::extend_digit_t>(rhs.digits[0]);
-    uintN_t<64> out;
-    detail::split_64_to_32(res, out.digits[0], out.digits[1]);
-    return out;
-}
+    const uintN_t<32>& lhs, const uintN_t<32>& rhs
+) noexcept { return naive(lhs, rhs); }
 
 /* Toom-4 algorithm explain
 Math base:
@@ -776,8 +799,7 @@ uintN_t<B> fact_vals(size_t i) {
  */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
-    const uintN_t<B>& lhs,
-    const uintN_t<B>& rhs
+    const uintN_t<B>& lhs, const uintN_t<B>& rhs
 ) noexcept {
     using doub_num_t = uintN_t<B*2>;
     using half_num_t = uintN_t<B/2>;
@@ -843,15 +865,13 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> toom_4(
 
 template <> // base variant for recursion if 32
 evsCONSTEXPR_GREATER_CXX11 uintN_t<64> toom_4(
-    const uintN_t<32>& lhs,
-    const uintN_t<32>& rhs
-) noexcept { return karatsuba(lhs, rhs); }
+    const uintN_t<32>& lhs, const uintN_t<32>& rhs
+) noexcept { return naive(lhs, rhs); }
 
 template <> // base variant for recursion if 64
 evsCONSTEXPR_GREATER_CXX11 uintN_t<128> toom_4(
-    const uintN_t<64>& lhs,
-    const uintN_t<64>& rhs
-) noexcept { return karatsuba(lhs, rhs); }
+    const uintN_t<64>& lhs, const uintN_t<64>& rhs
+) noexcept { return naive(lhs, rhs); }
 
 /**
  * @brief  Multiplication by russian peasant algorithm
@@ -861,8 +881,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<128> toom_4(
  */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> russian_peasant(
-    const uintN_t<B>& lhs,
-    const uintN_t<B>& rhs
+    const uintN_t<B>& lhs, const uintN_t<B>& rhs
 ) noexcept {
     uintN_t<B*2> out, left = lhs, right = rhs;
     while (right) {
@@ -896,8 +915,7 @@ struct div_result_t {
  */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 div_result_t<B> naive(
-    const uintN_t<B>& N,
-    const uintN_t<B>& D
+    const uintN_t<B>& N, const uintN_t<B>& D
 ) noexcept {
     // from https://clck.ru/3FBwXQ (Wikipedia)
     // Division by zero => return {max, max}
