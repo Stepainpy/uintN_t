@@ -1047,13 +1047,15 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept
     return out;
 }
 
-class uint64_with_carry {
+// Unsigned 64-bit Integer With Carry
+class uiwc {
 public:
-    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry() : m_r(0), m_c(0) {}
-    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry(uint64_t n) : m_r(n), m_c(0) {}
+    evsCONSTEXPR_GREATER_CXX11 uiwc() : m_r(0), m_c(0) {}
+    evsCONSTEXPR_GREATER_CXX11 uiwc(uint64_t n) : m_r(n), m_c(0) {}
+    evsCONSTEXPR_GREATER_CXX11 uiwc(uint64_t n, bool c) : m_r(n), m_c(c) {}
 
-    evsCONSTEXPR_GREATER_CXX11 uint8_t carry() const noexcept { return m_c; }
-    evsCONSTEXPR_GREATER_CXX11 void carry(uint8_t v) noexcept { m_c = v & 1; }
+    evsCONSTEXPR_GREATER_CXX11 bool carry() const noexcept { return m_c; }
+    evsCONSTEXPR_GREATER_CXX11 void carry(bool v) noexcept { m_c = v; }
     evsCONSTEXPR_GREATER_CXX11 void reg(uint64_t v) noexcept { m_r = v; }
     evsCONSTEXPR_GREATER_CXX11 uint32_t low() const noexcept {
         return static_cast<uint32_t>(m_r);
@@ -1062,21 +1064,15 @@ public:
         return static_cast<uint32_t>(m_r >> 32);
     }
 
-    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry&
-    operator+=(const uint64_with_carry& rhs) noexcept {
-        uint64_t res = m_r + rhs.m_r;
-        m_c ^= rhs.m_c ^ (uint8_t)(res < m_r);
-        m_r = res;
-        return *this;
-    }
-    evsCONSTEXPR_GREATER_CXX11 uint64_with_carry
-    operator+(const uint64_with_carry& rhs) const noexcept {
-        return uint64_with_carry(*this) += rhs;
+    evsCONSTEXPR_GREATER_CXX11 uiwc operator+(const uiwc& rhs) noexcept {
+        uint64_t out_r = m_r + rhs.m_r;
+        bool     out_c = m_c ^ rhs.m_c ^ (out_r < m_r);
+        return uiwc(out_r, out_c);
     }
 
 private:
     uint64_t m_r;
-    uint8_t  m_c : 1;
+    bool m_c;
 };
 
 template <size_t B>
@@ -1198,22 +1194,20 @@ template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
     // from https://ido.tsu.ru/iop_res1/teorcrypto/text/1_3.html
     using ed_t = typename uintN_t<B>::extend_digit_t;
-    using uiwc = detail::uint64_with_carry;
     uintN_t<B*2> out;
-    uiwc cuv;
+    detail::uiwc cuv;
 
     const size_t n = x.digit_count;
     evsIRANGE(i, n) {
-        cuv.reg(ed_t{out.digits[i * 2]} +
-            ed_t{x.digits[i]} * ed_t{x.digits[i]});
+        cuv.reg(ed_t{out.digits[i * 2]} + ed_t{x.digits[i]} * ed_t{x.digits[i]});
         cuv.carry(0);
         out.digits[i * 2] = cuv.low();
 
         for (size_t j = i + 1; j < n; j++) {
-            cuv = uiwc(detail::merge_32_to_64(cuv.high(), cuv.carry()))
-                + uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
-                + uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
-                + uiwc(out.digits[i + j]);
+            cuv = detail::uiwc(detail::merge_32_to_64(cuv.high(), cuv.carry()))
+                + detail::uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
+                + detail::uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
+                + detail::uiwc(out.digits[i + j]);
             out.digits[i + j] = cuv.low();
         }
 
