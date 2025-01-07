@@ -911,7 +911,7 @@ struct div_result_t {
  * @brief  Division by long division algorithm
  * @param  N numerator
  * @param  D denominator
- * @return Quotient and remainder of  division
+ * @return Quotient and remainder of division
  */
 template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 div_result_t<B> naive(
@@ -1159,6 +1159,35 @@ namespace uintN_t_alg {
 
 using ::detail::multiplication::karatsuba;
 using ::detail::multiplication::russian_peasant;
+
+/**
+ * @brief  Pair of quotient and remainder
+ * @tparam B bit width of inner numbers
+ */
+template <size_t B>
+using division_result_t = ::detail::division::div_result_t<B>;
+
+/**
+ * @brief  Multiplication by naive algorithm
+ * @param  lhs left-side operand
+ * @param  rhs right-side operand
+ * @return Multiplication result with double bit width
+ */
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> naive_mul(
+    const uintN_t<B>& lhs, const uintN_t<B>& rhs
+) noexcept { return detail::multiplication::naive(lhs, rhs); }
+
+/**
+ * @brief  Division by long division algorithm
+ * @param  lhs numerator
+ * @param  rhs denominator
+ * @return Quotient and remainder of division
+ */
+template <size_t B>
+evsCONSTEXPR_GREATER_CXX11 division_result_t<B> naive_div(
+    const uintN_t<B>& lhs, const uintN_t<B>& rhs
+) noexcept { return detail::division::naive(lhs, rhs); }
 
 /**
  * @brief  Fast sqгaring function
