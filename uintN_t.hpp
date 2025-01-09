@@ -423,6 +423,16 @@ struct uintN_t {
         evsIRANGE(i, digit_count) digits[i] = 0;
     }
 
+    /// Extend the number with using value of sign bit for filling
+    template <size_t other_bits, evsENABLE(other_bits > bits)>
+    evsCONSTEXPR_GREATER_CXX11 uintN_t<other_bits> extend_with_sign() const noexcept {
+        auto out = static_cast<uintN_t<other_bits>>(*this);
+        if (sign_bit())
+            for (size_t i = digit_count; i < out.digit_count; i++)
+                out.digits[i] = digit_t(-1);
+        return out;
+    }
+
     /**
      * @brief  Get bit value from `pos`
      * @param  pos index of bit
