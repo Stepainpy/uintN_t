@@ -29,7 +29,7 @@ int main() {
 }
 ```
 
-## STL support
+## Standard library support
 
 - `std::numeric_limits`
 - `std::hash`
@@ -57,5 +57,6 @@ int main() {
 - [x] Add literal check in operator
 - [ ] Full implement Toom-Cook algorithm with k = 4
 - [x] Add conversion from string or istream
+- [ ] Add support of different digit type
 
 [^1]: Overloaded by template parameter
