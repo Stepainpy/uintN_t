@@ -12,6 +12,7 @@
 /* Info: for macros use namespace prefix 'evs' */
 
 #define evsHAS_BRACED_INIT_LIST __cplusplus >= 201402L
+#define evsHASNT_BRACED_INIT_LIST !(evsHAS_BRACED_INIT_LIST)
 
 #if __cplusplus >= 201402L
 #define evsCONSTEXPR_GREATER_CXX11 constexpr
@@ -23,7 +24,7 @@
 #define evsIRANGE(i_var, max_val) \
 for (size_t i_var = 0; i_var < max_val; ++i_var)
 
-#if !(evsHAS_BRACED_INIT_LIST)
+#if evsHASNT_BRACED_INIT_LIST
 template <size_t> struct uintN_t;
 #endif
 
@@ -379,7 +380,7 @@ struct uintN_t {
     const noexcept { return compare(rhs) op 0; }
 
     evsCMP_OPER_TMPL(==)
-#if !(__cpp_impl_three_way_comparison >= 201907L)
+#if __cpp_impl_three_way_comparison < 201907L
     evsCMP_OPER_TMPL(!=)
     evsCMP_OPER_TMPL(< )
     evsCMP_OPER_TMPL(> )
@@ -579,7 +580,7 @@ create_uintN_t(const typename uintN_t<B>::digit_t
 
 namespace detail {
 
-#if !(evsHAS_BRACED_INIT_LIST)
+#if evsHASNT_BRACED_INIT_LIST
 template <size_t B>
 uintN_t<B> uintN_ctor(uint32_t f, uint32_t s) noexcept {
     uintN_t<B> out;
