@@ -1061,13 +1061,13 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B> from_literal(const char* literal) noexcept
 // Unsigned 64-bit Integer With Carry
 class uiwc {
 public:
-    evsCONSTEXPR_GREATER_CXX11 uiwc() : m_r(0), m_c(0) {}
-    evsCONSTEXPR_GREATER_CXX11 uiwc(uint64_t n) : m_r(n), m_c(0) {}
-    evsCONSTEXPR_GREATER_CXX11 uiwc(uint64_t n, bool c) : m_r(n), m_c(c) {}
+    evsCONSTEXPR_GREATER_CXX11 uiwc(uint64_t n = 0, bool c = false)
+        : m_r(n), m_c(c) {}
 
     evsCONSTEXPR_GREATER_CXX11 bool carry() const noexcept { return m_c; }
     evsCONSTEXPR_GREATER_CXX11 void carry(bool v) noexcept { m_c = v; }
     evsCONSTEXPR_GREATER_CXX11 void reg(uint64_t v) noexcept { m_r = v; }
+
     evsCONSTEXPR_GREATER_CXX11 uint32_t low() const noexcept {
         return static_cast<uint32_t>(m_r);
     }
@@ -1075,10 +1075,9 @@ public:
         return static_cast<uint32_t>(m_r >> 32);
     }
 
-    evsCONSTEXPR_GREATER_CXX11 uiwc operator+(const uiwc& rhs) noexcept {
+    evsCONSTEXPR_GREATER_CXX11 uiwc operator+(const uiwc& rhs) const noexcept {
         uint64_t out_r = m_r + rhs.m_r;
-        bool     out_c = m_c ^ rhs.m_c ^ (out_r < m_r);
-        return uiwc(out_r, out_c);
+        return uiwc(out_r, m_c ^ rhs.m_c ^ (out_r < m_r));
     }
 
 private:
