@@ -49,16 +49,6 @@ template <size_t B> uintN_t<B> uintN_ctor(uint32_t) noexcept;
 ::detail::uintN_ctor<B>(__VA_ARGS__)
 #endif
 
-constexpr uint64_t merge_32_to_64(uint32_t low, uint32_t high) noexcept {
-    return static_cast<uint64_t>(high) << 32 | low;
-}
-
-evsCONSTEXPR_GREATER_CXX11 void split_64_to_32(
-    uint64_t num, uint32_t& low, uint32_t& high) noexcept {
-    low  = static_cast<uint32_t>(num);
-    high = static_cast<uint32_t>(num >> 32);
-}
-
 template <class T>
 evsCONSTEXPR_GREATER_CXX11 void swap_ptr(T* lhs, T* rhs) noexcept {
     T tmp = *rhs; *rhs = *lhs; *lhs = tmp;
@@ -93,6 +83,18 @@ struct uintN_t {
 
     digit_t digits[digit_count] {};
 
+    /* Support static functions */
+
+    static evsCONSTEXPR_GREATER_CXX11 void split_ext_digit(
+        extend_digit_t number, digit_t& low, digit_t& high) noexcept {
+        low  = static_cast<uint32_t>(number);
+        high = static_cast<uint32_t>(number >> digit_width);
+    }
+
+    static constexpr extend_digit_t merge_digits(digit_t low, digit_t high) noexcept {
+        return static_cast<extend_digit_t>(high) << digit_width | low;
+    }
+
     /* Conversions */
 
     evsCONSTEXPR_GREATER_CXX11 operator bool() const noexcept {
@@ -106,7 +108,7 @@ struct uintN_t {
         return digits[0];
     }
     constexpr explicit operator extend_digit_t() const noexcept {
-        return detail::merge_32_to_64(digits[0], digits[1]);
+        return merge_digits(digits[0], digits[1]);
     }
 
     /* Widening conversion (1 -> 01) */
@@ -558,7 +560,7 @@ template <size_t B>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B>
 create_uintN_t(uint64_t num) noexcept {
     uint32_t l = 0, h = 0;
-    detail::split_64_to_32(num, l, h);
+    uintN_t<B>::split_ext_digit(num, l, h);
     return evsUINTN_CTOR(B, l, h);
 }
 
@@ -634,7 +636,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<64> naive(
         static_cast<uintN_t<32>::extend_digit_t>(lhs.digits[0]) *
         static_cast<uintN_t<32>::extend_digit_t>(rhs.digits[0]);
     uintN_t<64> out;
-    detail::split_64_to_32(res, out.digits[0], out.digits[1]);
+    uintN_t<32>::split_ext_digit(res, out.digits[0], out.digits[1]);
     return out;
 }
 
@@ -1214,7 +1216,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2> sqr(const uintN_t<B>& x) noexcept {
         out.digits[i * 2] = cuv.low();
 
         for (size_t j = i + 1; j < n; j++) {
-            cuv = detail::uiwc(detail::merge_32_to_64(cuv.high(), cuv.carry()))
+            cuv = detail::uiwc(uintN_t<B>::merge_digits(cuv.high(), cuv.carry()))
                 + detail::uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
                 + detail::uiwc(ed_t{x.digits[i]} * ed_t{x.digits[j]})
                 + detail::uiwc(out.digits[i + j]);
@@ -1471,7 +1473,7 @@ struct hash<uintN_t<B>> {
     using result_type   = size_t;
 
     result_type operator()(const argument_type& val) const noexcept {
-        return static_cast<result_type>(detail::merge_32_to_64(
+        return static_cast<result_type>(argument_type::merge_digits(
             val.digits[0], val.digits[1]));
     }
 };
