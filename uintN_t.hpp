@@ -116,7 +116,6 @@ struct uintN_t {
     static constexpr size_t digit_count = Bits / digit_width;
     using        digit_type =    DigitT;
     using extend_digit_type = ExtDigitT;
-    using min_width_type = uintN_t<digit_width, digit_type, extend_digit_type>;
 
     static_assert(
         detail::traits::is_unsigned_int<DigitT>::value &&
@@ -681,8 +680,9 @@ uintN_t<B, D, E> uintN_ctor(D f) noexcept {
 
 namespace multiplication {
 
-template <size_t B, class D, class E>
-evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> naive(
+template <size_t B, class D, class E> struct naive_s {
+
+static evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> impl(
     const uintN_t<B, D, E>& lhs, const uintN_t<B, D, E>& rhs
 ) noexcept {
     using half_num_t = uintN_t<B/2, D, E>;
@@ -693,36 +693,37 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> naive(
     lhs.split(x0, x1);
     rhs.split(y0, y1);
 
-    doub_num_t out = naive(x0, y0);
-    out += static_cast<doub_num_t>(naive(x0, y1)) << B/2;
-    out += static_cast<doub_num_t>(naive(x1, y0)) << B/2;
-    out += static_cast<doub_num_t>(naive(x1, y1)) << B;
+    doub_num_t out = naive_s<B/2, D, E>::impl(x0, y0);
+    out += static_cast<doub_num_t>(naive_s<B/2, D, E>::impl(x0, y1)) << B/2;
+    out += static_cast<doub_num_t>(naive_s<B/2, D, E>::impl(x1, y0)) << B/2;
+    out += static_cast<doub_num_t>(naive_s<B/2, D, E>::impl(x1, y1)) << B;
 
     return out;
 }
 
-template <class D, class E> // base variant for recursion
-evsCONSTEXPR_GREATER_CXX11 uintN_t<detail::sizeof_bit<E>(), D, E> naive(
-    const uintN_t<detail::sizeof_bit<D>(), D, E>& lhs,
-    const uintN_t<detail::sizeof_bit<D>(), D, E>& rhs
+}; // struct naive_s
+
+// base variant for recursion
+template <class D, class E> struct naive_s<sizeof_bit<D>(), D, E> {
+
+static evsCONSTEXPR_GREATER_CXX11 uintN_t<sizeof_bit<E>(), D, E> impl(
+    const uintN_t<sizeof_bit<D>(), D, E>& lhs,
+    const uintN_t<sizeof_bit<D>(), D, E>& rhs
 ) noexcept {
     E res = 
         static_cast<E>(lhs.digits[0]) *
         static_cast<E>(rhs.digits[0]);
-    uintN_t<detail::sizeof_bit<E>(), D, E> out;
-    uintN_t<detail::sizeof_bit<D>(), D, E>::split_ext_digit(
+    uintN_t<sizeof_bit<E>(), D, E> out;
+    uintN_t<sizeof_bit<D>(), D, E>::split_ext_digit(
         res, out.digits[0], out.digits[1]);
     return out;
 }
 
-/**
- * @brief  Multiplication by Karatsuba algorithm
- * @param  lhs left-side operand
- * @param  rhs right-side operand
- * @return Multiplication result with double bit width
- */
-template <size_t B, class D, class E>
-evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> karatsuba(
+}; // struct naive_s
+
+template <size_t B, class D, class E> struct karatsuba_s {
+
+static evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> impl(
     const uintN_t<B, D, E>& lhs, const uintN_t<B, D, E>& rhs
 ) noexcept {
     using half_num_t = uintN_t<B/2, D, E>;
@@ -747,9 +748,9 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> karatsuba(
     bool xc = x2.assign_add(x0);
     bool yc = y2.assign_add(y0);
 
-    doub_num_t z0 = karatsuba(x0, y0);
-    doub_num_t z2 = karatsuba(x1, y1);
-    doub_num_t z3 = karatsuba(x2, y2);
+    doub_num_t z0 = karatsuba_s<B/2, D, E>::impl(x0, y0);
+    doub_num_t z2 = karatsuba_s<B/2, D, E>::impl(x1, y1);
+    doub_num_t z3 = karatsuba_s<B/2, D, E>::impl(x2, y2);
     //              ^- return with width = B
 
     // if-blocks need because has overflow in x2 and y2
@@ -765,11 +766,20 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> karatsuba(
     return out;
 }
 
-template <class D, class E> // base variant for recursion
-evsCONSTEXPR_GREATER_CXX11 uintN_t<detail::sizeof_bit<E>(), D, E> karatsuba(
-    const uintN_t<detail::sizeof_bit<D>(), D, E>& lhs,
-    const uintN_t<detail::sizeof_bit<D>(), D, E>& rhs
-) noexcept { return naive(lhs, rhs); }
+}; // struct karatsuba_s
+
+// base variant for recursion
+template <class D, class E>
+struct karatsuba_s<sizeof_bit<D>(), D, E> {
+
+static evsCONSTEXPR_GREATER_CXX11
+uintN_t<sizeof_bit<E>(), D, E> impl(
+    const uintN_t<sizeof_bit<D>(), D, E>& lhs,
+    const uintN_t<sizeof_bit<D>(), D, E>& rhs
+) noexcept { return naive_s<
+    sizeof_bit<D>(), D, E>::impl(lhs, rhs); }
+
+}; // struct karatsuba_s
 
 /* Toom-4 algorithm explain
 Math base:
@@ -880,14 +890,9 @@ uintN_t<B, D, E> fact_vals(size_t i) {
 #define evsFACT_VALUE(b, d, e, i) fact_vals<b, d, e>(i)
 #endif
 
-/**
- * @brief  Multiplication by Toom-Cook algorithm with k = 4
- * @param  lhs left-side operand
- * @param  rhs right-side operand
- * @return Multiplication result with double bit width
- */
-template <size_t B, class D, class E>
-evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> toom_4(
+template <size_t B, class D, class E> struct toom_4_s {
+
+static evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> impl(
     const uintN_t<B, D, E>& lhs, const uintN_t<B, D, E>& rhs
 ) noexcept {
     using doub_num_t = uintN_t<B*2, D, E>;
@@ -916,7 +921,7 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> toom_4(
         quar_num_t Q_y_low = static_cast<quar_num_t>(Q_y[i]);
         uint32_t P_y_carrying = P_y[i].digits[half_num_t::digit_count / 2]; // max 16 bit
         uint32_t Q_y_carrying = Q_y[i].digits[half_num_t::digit_count / 2]; // max 16 bit
-        R_y[i] = toom_4(P_y_low, Q_y_low);
+        R_y[i] = toom_4_s<B/4, D, E>::impl(P_y_low, Q_y_low);
         R_y[i] += static_cast<doub_num_t>(_fast_mul(Q_y_low, P_y_carrying)) << (B/4);
         R_y[i] += static_cast<doub_num_t>(_fast_mul(P_y_low, Q_y_carrying)) << (B/4);
         R_y[i] += evsUINTN_CTOR(B*2, D, E, P_y_carrying * Q_y_carrying) << (B/2);
@@ -950,19 +955,29 @@ evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> toom_4(
     return out;
 }
 
+}; // struct toom_4_s
+
 #undef evsFACT_VALUE
 
-template <class D, class E> // base variant for recursion if 32
-evsCONSTEXPR_GREATER_CXX11 uintN_t<detail::sizeof_bit<E>(), D, E> toom_4(
-    const uintN_t<detail::sizeof_bit<D>(), D, E>& lhs,
-    const uintN_t<detail::sizeof_bit<D>(), D, E>& rhs
-) noexcept { return naive(lhs, rhs); }
+// base variant for recursion if 32
+template <class D, class E> struct toom_4_s<sizeof_bit<D>(), D, E> {
 
-template <class D, class E> // base variant for recursion if 64
-evsCONSTEXPR_GREATER_CXX11 uintN_t<2*detail::sizeof_bit<E>(), D, E> toom_4(
-    const uintN_t<2*detail::sizeof_bit<D>(), D, E>& lhs,
-    const uintN_t<2*detail::sizeof_bit<D>(), D, E>& rhs
-) noexcept { return naive(lhs, rhs); }
+static evsCONSTEXPR_GREATER_CXX11 uintN_t<sizeof_bit<E>(), D, E> impl(
+    const uintN_t<sizeof_bit<D>(), D, E>& lhs,
+    const uintN_t<sizeof_bit<D>(), D, E>& rhs
+) noexcept { return naive_s<sizeof_bit<D>(), D, E>::impl(lhs, rhs); }
+
+}; // struct toom_4_s
+
+// base variant for recursion if 64
+template <class D, class E> struct toom_4_s<2*sizeof_bit<D>(), D, E> {
+
+static evsCONSTEXPR_GREATER_CXX11 uintN_t<2*sizeof_bit<E>(), D, E> impl(
+    const uintN_t<2*sizeof_bit<D>(), D, E>& lhs,
+    const uintN_t<2*sizeof_bit<D>(), D, E>& rhs
+) noexcept { return naive_s<2*sizeof_bit<D>(), D, E>::impl(lhs, rhs); }
+
+}; // struct toom_4_s
 
 /**
  * @brief  Multiplication by russian peasant algorithm
@@ -1192,7 +1207,8 @@ evsCONSTEXPR_GREATER_CXX11
 uintN_t<Bits, DigitT, ExtDigitT>& uintN_t<Bits, DigitT, ExtDigitT>::operator*=(
     const uintN_t<Bits, DigitT, ExtDigitT>& rhs) noexcept {
     return (*this = static_cast<uintN_t<Bits, DigitT, ExtDigitT>>(
-        detail::multiplication::karatsuba(*this, rhs)
+        detail::multiplication::karatsuba_s<
+        Bits, DigitT, ExtDigitT>::impl(*this, rhs)
     ));
 }
 template <size_t Bits, class DigitT, class ExtDigitT> // specefic variant for rhs < 2^16
@@ -1251,7 +1267,6 @@ evsDEFINE_LITERAL_SUFFIX(1024, uint32_t, uint64_t)
 
 namespace uintN_t_alg {
 
-using ::detail::multiplication::karatsuba;
 using ::detail::multiplication::russian_peasant;
 
 /**
@@ -1269,8 +1284,33 @@ using division_result_t = ::detail::division::div_result_t<B, D, E>;
  */
 template <size_t B, class D, class E>
 evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> naive_mul(
-    const uintN_t<B, D, E>& lhs, const uintN_t<B, D, E>& rhs
-) noexcept { return detail::multiplication::naive(lhs, rhs); }
+    const uintN_t<B, D, E>& lhs, const uintN_t<B, D, E>& rhs) noexcept {
+    return detail::multiplication::naive_s<B, D, E>::impl(lhs, rhs);
+}
+
+/**
+ * @brief  Multiplication by Karatsuba algorithm
+ * @param  lhs left-side operand
+ * @param  rhs right-side operand
+ * @return Multiplication result with double bit width
+ */
+template <size_t B, class D, class E>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> karatsuba_mul(
+    const uintN_t<B, D, E>& lhs, const uintN_t<B, D, E>& rhs) noexcept {
+    return detail::multiplication::karatsuba_s<B, D, E>::impl(lhs, rhs);
+}
+
+/**
+ * @brief  Multiplication by Toom-Cook algorithm with k = 4, not work now !!!
+ * @param  lhs left-side operand
+ * @param  rhs right-side operand
+ * @return Multiplication result with double bit width
+ */
+template <size_t B, class D, class E>
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> toom_4_mul(
+    const uintN_t<B, D, E>& lhs, const uintN_t<B, D, E>& rhs) noexcept {
+    return detail::multiplication::toom_4_s<B, D, E>::impl(lhs, rhs);
+}
 
 /**
  * @brief  Division by long division algorithm
