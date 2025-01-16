@@ -53,6 +53,7 @@ int main() {
 - to `extend_digit_t` (explicit)
 - to `uintN_t` with greater width
 - to `uintN_t` with less width (explicit)
+- to `uintN_t` with same width and other digit type by `to_another_digits`
 - to string by `std::to_string` or `std::to_chars` or `std::ostream`
 - from string by `std::strtoumax` or `std::from_chars` or `std::istream`
 

@@ -178,6 +178,33 @@ struct uintN_t {
         return out;
     }
 
+    template <class OtherDigitT, class OtherExtDigitT,
+        evsENABLE(sizeof(OtherDigitT) > sizeof(DigitT))>
+    evsCONSTEXPR_GREATER_CXX11 uintN_t<Bits, OtherDigitT, OtherExtDigitT>
+        to_another_digits() const noexcept {
+        const size_t ratio = sizeof(OtherDigitT) / sizeof(DigitT);
+        uintN_t<Bits, OtherDigitT, OtherExtDigitT> out;
+        evsIRANGE(i, out.digit_count)
+            for (size_t j = ratio; j--;) {
+                out.digits[i] <<= digit_width;
+                out.digits[i] |= static_cast<OtherDigitT>(digits[i * ratio + j]);
+            }
+        return out;
+    }
+
+    template <class OtherDigitT, class OtherExtDigitT,
+        evsENABLE(sizeof(OtherDigitT) < sizeof(DigitT))>
+    evsCONSTEXPR_GREATER_CXX11 uintN_t<Bits, OtherDigitT, OtherExtDigitT>
+        to_another_digits() const noexcept {
+        const size_t ratio = sizeof(DigitT) / sizeof(OtherDigitT);
+        uintN_t<Bits, OtherDigitT, OtherExtDigitT> out;
+        evsIRANGE(i, digit_count)
+            evsIRANGE(j, ratio)
+                out.digits[i * ratio + j] =
+                    static_cast<OtherDigitT>(digits[i] >> (j * CHAR_BIT));
+        return out;
+    }
+
     /* Assign functions */
 
     /**
@@ -1260,8 +1287,7 @@ evsCONSTEXPR_GREATER_CXX11 division_result_t<B, D, E> naive_div(
  * @return Result of operations `x^2`
  */
 template <size_t B, class D, class E>
-evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E>
-    sqr(const uintN_t<B, D, E>& x) noexcept {
+evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D, E> sqr(const uintN_t<B, D, E>& x) noexcept {
     // from https://ido.tsu.ru/iop_res1/teorcrypto/text/1_3.html
     using uiwc = detail::uiwc<D, E>;
     uintN_t<B*2, D, E> out;
