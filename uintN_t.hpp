@@ -178,6 +178,7 @@ struct uintN_t {
         return out;
     }
 
+    /* Merging conversion ([..|..|..|..] -> [....|....]) */
     template <class OtherDigitT, class OtherExtDigitT,
         evsENABLE(sizeof(OtherDigitT) > sizeof(DigitT))>
     evsCONSTEXPR_GREATER_CXX11 uintN_t<Bits, OtherDigitT, OtherExtDigitT>
@@ -192,6 +193,7 @@ struct uintN_t {
         return out;
     }
 
+    /* Spliting conversion ([....|....] -> [..|..|..|..]) */
     template <class OtherDigitT, class OtherExtDigitT,
         evsENABLE(sizeof(OtherDigitT) < sizeof(DigitT))>
     evsCONSTEXPR_GREATER_CXX11 uintN_t<Bits, OtherDigitT, OtherExtDigitT>
@@ -200,8 +202,8 @@ struct uintN_t {
         uintN_t<Bits, OtherDigitT, OtherExtDigitT> out;
         evsIRANGE(i, digit_count)
             evsIRANGE(j, ratio)
-                out.digits[i * ratio + j] =
-                    static_cast<OtherDigitT>(digits[i] >> (j * CHAR_BIT));
+                out.digits[i * ratio + j] = static_cast<OtherDigitT>(
+                    digits[i] >> (j * out.digit_width));
         return out;
     }
 
