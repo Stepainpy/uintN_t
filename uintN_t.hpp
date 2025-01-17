@@ -700,7 +700,7 @@ static evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D> impl(
 }; // struct naive_s
 
 // base variant for recursion
-template <class D> struct naive_s<sizeof_bit<D>(), D> {
+template <class D> struct naive_s<(size_t)sizeof_bit<D>(), D> {
 
 static evsCONSTEXPR_GREATER_CXX11 uintN_t<sizeof_bit<D>()*2, D> impl(
     const uintN_t<sizeof_bit<D>(), D>& lhs,
@@ -767,7 +767,7 @@ static evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D> impl(
 
 // base variant for recursion
 template <class D>
-struct karatsuba_s<sizeof_bit<D>(), D> {
+struct karatsuba_s<(size_t)sizeof_bit<D>(), D> {
 
 static evsCONSTEXPR_GREATER_CXX11
 uintN_t<sizeof_bit<D>()*2, D> impl(
@@ -957,7 +957,7 @@ static evsCONSTEXPR_GREATER_CXX11 uintN_t<B*2, D> impl(
 #undef evsFACT_VALUE
 
 // base variant for recursion if 32
-template <class D> struct toom_4_s<sizeof_bit<D>(), D> {
+template <class D> struct toom_4_s<(size_t)sizeof_bit<D>(), D> {
 
 static evsCONSTEXPR_GREATER_CXX11 uintN_t<sizeof_bit<D>()*2, D> impl(
     const uintN_t<sizeof_bit<D>(), D>& lhs,
@@ -967,7 +967,7 @@ static evsCONSTEXPR_GREATER_CXX11 uintN_t<sizeof_bit<D>()*2, D> impl(
 }; // struct toom_4_s
 
 // base variant for recursion if 64
-template <class D> struct toom_4_s<sizeof_bit<D>()*2, D> {
+template <class D> struct toom_4_s<(size_t)sizeof_bit<D>()*2, D> {
 
 static evsCONSTEXPR_GREATER_CXX11 uintN_t<sizeof_bit<D>()*4, D> impl(
     const uintN_t<sizeof_bit<D>()*2, D>& lhs,
